@@ -1,0 +1,25 @@
+type project
+title
+    FSharp.Plc.Ads.Experimental
+owners
+    Author not set
+authors 
+    Author not set
+projectUrl
+    https://github.com/nu-soft/FSharp.Plc.Ads.Experimental/nu-soft/FSharp.Plc.Ads.Experimental
+iconUrl
+    https://raw.githubusercontent.com/nu-soft/FSharp.Plc.Ads.Experimental/nu-soft/FSharp.Plc.Ads.Experimental/master/docs/files/img/logo.png
+licenseUrl
+    https://github.com/nu-soft/FSharp.Plc.Ads.Experimental/nu-soft/FSharp.Plc.Ads.Experimental/blob/master/LICENSE.txt
+requireLicenseAcceptance
+    false
+copyright
+    Copyright 2015
+tags
+    fsharp
+summary
+    Summary not set
+description
+    Description not set
+
+
