@@ -59,7 +59,7 @@ let gitHome = sprintf "%s/%s" "https://github.com/nu-soft/FSharp.Plc.Ads" gitOwn
 let gitName = "FSharp.Plc.Ads"
 
 // The url for the raw files hosted
-let gitRaw = environVarOrDefault "gitRaw" "https://raw.githubusercontent.com/nu-soft/FSharp.Plc.Ads/nu-soft"
+let gitRaw = environVarOrDefault "gitRaw" "https://raw.githubusercontent.com/nu-soft/FSharp.Plc.Ads"
 
 // --------------------------------------------------------------------------------------
 // END TODO: The rest of the file includes standard build steps
@@ -241,8 +241,8 @@ Target "GenerateHelp" (fun _ ->
     Rename "docsrc/content/release-notes.md" "docsrc/content/RELEASE_NOTES.md"
 
     DeleteFile "docsrc/content/license.md"
-    CopyFile "docsrc/content/" "LICENSE.txt"
-    Rename "docsrc/content/license.md" "docsrc/content/LICENSE.txt"
+    CopyFile "docsrc/content/" "LICENSE"
+    Rename "docsrc/content/license.md" "docsrc/content/LICENSE"
 
     generateHelp true
 )
@@ -253,8 +253,8 @@ Target "GenerateHelpDebug" (fun _ ->
     Rename "docsrc/content/release-notes.md" "docsrc/content/RELEASE_NOTES.md"
 
     DeleteFile "docsrc/content/license.md"
-    CopyFile "docsrc/content/" "LICENSE.txt"
-    Rename "docsrc/content/license.md" "docsrc/content/LICENSE.txt"
+    CopyFile "docsrc/content/" "LICENSE"
+    Rename "docsrc/content/license.md" "docsrc/content/LICENSE"
 
     generateHelp' true true
 )

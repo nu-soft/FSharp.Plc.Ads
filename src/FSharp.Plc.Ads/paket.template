@@ -6,11 +6,11 @@ owners
 authors 
     Pawe³ Paluch
 projectUrl
-    https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads
+    https://github.com/nu-soft/FSharp.Plc.Ads/
 iconUrl
-    https://raw.githubusercontent.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads/master/docs/files/img/logo.png
+    https://raw.githubusercontent.com/nu-soft/FSharp.Plc.Ads/master/docs/files/img/logo.png
 licenseUrl
-    https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads/blob/master/LICENSE.txt
+    https://github.com/nu-soft/FSharp.Plc.Ads/blob/master/LICENSE.txt
 requireLicenseAcceptance
     true
 copyright

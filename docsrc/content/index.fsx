@@ -62,5 +62,5 @@ redistribution for both commercial and non-commercial purposes. For more informa
   [gh]: https://github.com/nu-soft/FSharp.Plc.Ads
   [issues]: https://github.com/nu-soft/FSharp.Plc.Ads/issues
   [readme]: https://github.com/nu-soft/FSharp.Plc.Ads/blob/master/README.md
-  [license]: https://github.com/nu-soft/FSharp.Plc.Ads/blob/master/LICENSE.txt
+  [license]: https://github.com/nu-soft/FSharp.Plc.Ads/blob/master/LICENSE
 *)
