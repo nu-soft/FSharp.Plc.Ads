@@ -1,4 +1,7 @@
 FSharp.Core
+TwinCAT.Ads.NET
+AutoFixture
+NuSoft.FSharp.IEC.DataTypes
 group Test
 NUnit
 NUnit.Runners

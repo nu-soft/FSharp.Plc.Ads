@@ -10,10 +10,9 @@ Introducing your project
 Say more
 
 *)
-#r "FSharp.Plc.Ads.Experimental.dll"
+#r "FSharp.Plc.Ads.dll"
 open FSharp.Plc.Ads.Experimental
 
-Library.hello 0
 (**
 Some more info
 *)

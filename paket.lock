@@ -1,7 +1,10 @@
 RESTRICTION: >= net45
 NUGET
   remote: https://www.nuget.org/api/v2
+    AutoFixture (3.51)
     FSharp.Core (4.0.0.1) - redirects: force
+    NuSoft.FSharp.IEC.DataTypes (1.0.10)
+    TwinCAT.Ads.NET (4.2.147)
 
 GROUP Build
 NUGET

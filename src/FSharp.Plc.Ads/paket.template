@@ -1,20 +1,20 @@
 type project
 title
-    FSharp.Plc.Ads.Experimental
+    FSharp.Plc.Ads
 owners
-    Author not set
+    Pawe³ Paluch
 authors 
-    Author not set
+    Pawe³ Paluch
 projectUrl
-    https://github.com/nu-soft/FSharp.Plc.Ads.Experimental/nu-soft/FSharp.Plc.Ads.Experimental
+    https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads
 iconUrl
-    https://raw.githubusercontent.com/nu-soft/FSharp.Plc.Ads.Experimental/nu-soft/FSharp.Plc.Ads.Experimental/master/docs/files/img/logo.png
+    https://raw.githubusercontent.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads/master/docs/files/img/logo.png
 licenseUrl
-    https://github.com/nu-soft/FSharp.Plc.Ads.Experimental/nu-soft/FSharp.Plc.Ads.Experimental/blob/master/LICENSE.txt
+    https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads/blob/master/LICENSE.txt
 requireLicenseAcceptance
-    false
+    true
 copyright
-    Copyright 2015
+    Copyright 2017
 tags
     fsharp
 summary

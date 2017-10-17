@@ -13,8 +13,8 @@ Documentation
   <div class="span1"></div>
   <div class="span6">
     <div class="well well-small" id="nuget">
-      The FSharp.Plc.Ads.Experimental library can be <a href="https://nuget.org/packages/FSharp.Plc.Ads.Experimental">installed from NuGet</a>:
-      <pre>PM> Install-Package FSharp.Plc.Ads.Experimental</pre>
+      The FSharp.Plc.Ads library can be <a href="https://nuget.org/packages/FSharp.Plc.Ads">installed from NuGet</a>:
+      <pre>PM> Install-Package FSharp.Plc.Ads</pre>
     </div>
   </div>
   <div class="span1"></div>
@@ -26,10 +26,9 @@ Example
 This example demonstrates using a function defined in this sample library.
 
 *)
-#r "FSharp.Plc.Ads.Experimental.dll"
+#r "FSharp.Plc.Ads.dll"
 open FSharp.Plc.Ads.Experimental
 
-printfn "hello = %i" <| Library.hello 0
 
 (**
 Some more info
@@ -59,9 +58,9 @@ The library is available under Public Domain license, which allows modification 
 redistribution for both commercial and non-commercial purposes. For more information see the 
 [License file][license] in the GitHub repository. 
 
-  [content]: https://github.com/fsprojects/FSharp.Plc.Ads.Experimental/tree/master/docs/content
-  [gh]: https://github.com/fsprojects/FSharp.Plc.Ads.Experimental
-  [issues]: https://github.com/fsprojects/FSharp.Plc.Ads.Experimental/issues
-  [readme]: https://github.com/fsprojects/FSharp.Plc.Ads.Experimental/blob/master/README.md
-  [license]: https://github.com/fsprojects/FSharp.Plc.Ads.Experimental/blob/master/LICENSE.txt
+  [content]: https://github.com/fsprojects/FSharp.Plc.Ads/tree/master/docs/content
+  [gh]: https://github.com/fsprojects/FSharp.Plc.Ads
+  [issues]: https://github.com/fsprojects/FSharp.Plc.Ads/issues
+  [readme]: https://github.com/fsprojects/FSharp.Plc.Ads/blob/master/README.md
+  [license]: https://github.com/fsprojects/FSharp.Plc.Ads/blob/master/LICENSE.txt
 *)

@@ -184,3 +184,12 @@ docsrc/content/license.md
 docsrc/content/release-notes.md
 .fake
 docsrc/tools/FSharp.Formatting.svclog
+
+# twincat2 build files
+*.DFR
+*.BAK
+*.SDB
+*.SYM
+*.tpy
+*.ci
+*.ri

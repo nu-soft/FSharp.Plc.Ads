@@ -11,17 +11,17 @@
 // (This is the original behaviour of ProjectScaffold prior to multi project support)
 let referenceBinaries = []
 // Web site location for the generated documentation
-let website = "/FSharp.Plc.Ads.Experimental"
+let website = "/FSharp.Plc.Ads"
 
-let githubLink = "https://github.com/nu-soft/FSharp.Plc.Ads.Experimental/nu-soft/FSharp.Plc.Ads.Experimental"
+let githubLink = "https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads"
 
 // Specify more information about your project
 let info =
-  [ "project-name", "FSharp.Plc.Ads.Experimental"
+  [ "project-name", "FSharp.Plc.Ads"
     "project-author", "Update Author in build.fsx"
     "project-summary", "Project has no summmary; update build.fsx"
     "project-github", githubLink
-    "project-nuget", "http://nuget.org/packages/FSharp.Plc.Ads.Experimental" ]
+    "project-nuget", "http://nuget.org/packages/FSharp.Plc.Ads" ]
 
 // --------------------------------------------------------------------------------------
 // For typical project, no changes are needed below
