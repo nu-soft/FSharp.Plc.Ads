@@ -58,9 +58,9 @@ The library is available under Public Domain license, which allows modification 
 redistribution for both commercial and non-commercial purposes. For more information see the 
 [License file][license] in the GitHub repository. 
 
-  [content]: https://github.com/fsprojects/FSharp.Plc.Ads/tree/master/docs/content
-  [gh]: https://github.com/fsprojects/FSharp.Plc.Ads
-  [issues]: https://github.com/fsprojects/FSharp.Plc.Ads/issues
-  [readme]: https://github.com/fsprojects/FSharp.Plc.Ads/blob/master/README.md
-  [license]: https://github.com/fsprojects/FSharp.Plc.Ads/blob/master/LICENSE.txt
+  [content]: https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/docs/content
+  [gh]: https://github.com/nu-soft/FSharp.Plc.Ads
+  [issues]: https://github.com/nu-soft/FSharp.Plc.Ads/issues
+  [readme]: https://github.com/nu-soft/FSharp.Plc.Ads/blob/master/README.md
+  [license]: https://github.com/nu-soft/FSharp.Plc.Ads/blob/master/LICENSE.txt
 *)
