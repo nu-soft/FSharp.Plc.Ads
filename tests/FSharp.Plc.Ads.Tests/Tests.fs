@@ -5,11 +5,18 @@ open NUnit.Framework
 open Ploeh.AutoFixture
 open TwinCAT.Ads
 open System
+open System.Linq
 
 let writeOnce<'T when 'T : struct> (client:TcAdsClient) symName (value: 'T) =
   let handle = client.CreateVariableHandle symName
   client.WriteAny(handle, value)
   client.DeleteVariableHandle handle
+
+let writeArrOnce<'T when 'T : struct> (client:TcAdsClient) symName (value: 'T array) =
+  let handle = client.CreateVariableHandle symName
+  client.WriteAny(handle, value)
+  client.DeleteVariableHandle handle
+  
 
 let writeStringOnce (client:TcAdsClient) symName len (value: string) =
   let handle = client.CreateVariableHandle symName
@@ -19,6 +26,11 @@ let writeStringOnce (client:TcAdsClient) symName len (value: string) =
 let readOnce<'T when 'T : struct> (client:TcAdsClient) symName  =
   let handle = client.CreateVariableHandle symName
   let res = client.ReadAny(handle, typeof<'T>) :?> 'T
+  client.DeleteVariableHandle handle
+  res
+let readArrOnce<'T when 'T : struct> (client:TcAdsClient) symName len  =
+  let handle = client.CreateVariableHandle symName
+  let res = client.ReadAny(handle, typeof<'T array>, [| len |]) :?> 'T array
   client.DeleteVariableHandle handle
   res
 let readStrOnce (client:TcAdsClient) symName len =
@@ -41,7 +53,7 @@ let ``Try create handle to nonexisting symbolic name`` () =
     let res = plc { readAny ".nonexistingVar" }
 
     res |> Result.isAdsNok |> Assert.IsTrue
- 
+
 (*
   Do not test for LINT and LWORD in TC2 as those types are not supported
 *)
@@ -147,3 +159,42 @@ let ``primitive types write`` () =
   Assert.AreEqual(realExp, realAct)
   Assert.AreEqual(lrealExp, lrealAct)
   Assert.AreEqual(stringExp, stringAct)
+
+[<Test>]
+let ``Accessing an array in the PLC - read`` () =
+  let fixture = new Fixture()
+  //Set ADS in Start
+  let setupClient = new TcAdsClient()
+  
+  setupClient.Connect("192.168.68.132.1.1", 801)
+  let plc = createClient "192.168.68.132.1.1" 801
+  let intPlcExp = fixture.CreateMany<INT>(100).ToArray()
+
+  writeArrOnce setupClient ".PLCVar" intPlcExp
+  
+  plc { readAny ".PLCVar" }
+  |> function
+    | Choice2Of3 err -> Assert.Fail err
+    | Choice3Of3 (code,err) -> sprintf "%s with code %A" err code |> Assert.Fail
+    | Choice1Of3 (arr: INT array) ->
+      Assert.AreEqual(intPlcExp.Length, arr.Length, "arrays have different lengths")
+      arr
+      |> Seq.zip intPlcExp
+      |> Seq.iter Assert.AreEqual
+
+[<Test>]
+let ``Accessing an array in the PLC - write`` () =
+  let fixture = new Fixture()
+  //Set ADS in Start
+  let setupClient = new TcAdsClient()
+  
+  setupClient.Connect("192.168.68.132.1.1", 801)
+  let plc = createClient "192.168.68.132.1.1" 801
+  let intPlcExp = fixture.CreateMany<INT>(100).ToArray()
+
+  writeArrOnce setupClient ".PLCVar" intPlcExp
+  
+  plc { writeAny ".PLCVar" intPlcExp } |> Result.isOk |> Assert.IsTrue
+  readArrOnce<INT> setupClient ".PLCVar" 100
+  |> Seq.zip intPlcExp
+  |> Seq.iter Assert.AreEqual

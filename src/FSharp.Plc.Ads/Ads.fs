@@ -70,11 +70,13 @@ module Builder =
 
     let parseErrorCodes op (code: AdsErrorCode) = sprintf "%sAMS ERROR: %A" op code
 
-    let readAny<'T> (client: TcAdsClient) (symName,handle,_,_,size) =
+    let readAny<'T> (client: TcAdsClient) (symName,handle,_,_,size,arrDim) =
       try
         match typeof<'T> with
           | str when str = typeof<string> -> 
             client.ReadAny(handle,typeof<'T>, [|size|]) :?> 'T
+          | arr when arr.IsArray && arr.GetElementType().IsValueType ->
+            client.ReadAny(handle,typeof<'T>, [|arrDim|]) :?> 'T
           | _ -> 
             client.ReadAny(handle, typeof<'T>) :?> 'T
         |> Rail.ok
@@ -84,7 +86,7 @@ module Builder =
 
         | ex -> ex.Message |> Rail.nok
 
-    let writeAny (client: TcAdsClient) (value: 'T) (symName, handle,_,_,size) =
+    let writeAny (client: TcAdsClient) (value: 'T) (symName, handle,_,_,size,_) =
       let type' = typeof<'T>
       try
         if type' = typeof<string> then
@@ -108,9 +110,9 @@ module Builder =
 
         | ex -> ex.Message |> Rail.nok
 
-    let writeHeader (writer:AdsBinaryWriter) (vars: (string*int*int64*int64*int) seq) =
+    let writeHeader (writer:AdsBinaryWriter) (vars: (string*int*int64*int64*int*int) seq) =
       vars
-      |> Seq.iter (fun (_,handle,_,_,size) ->
+      |> Seq.iter (fun (_,handle,_,_,size,_) ->
         AdsReservedIndexGroups.SymbolValueByHandle |> int |> writer.Write
         handle |> writer.Write
         size |> writer.Write
@@ -121,7 +123,7 @@ module Builder =
 
   type AdsWrapper = internal {
     Client: TcAdsClient
-    Symbols: IDictionary<string,string*int*int64*int64*int>
+    Symbols: IDictionary<string,string*int*int64*int64*int*int>
     SymbolLoader: TcAdsSymbolInfoLoader
   }
   with
@@ -136,8 +138,9 @@ module Builder =
             let info = 
               fun () -> this.SymbolLoader.FindSymbol(symName) 
               |> lock this.SymbolLoader
-            this.Symbols.Add (symName,(symName,handle,info.IndexGroup,info.IndexOffset,info.Size))
-            Rail.ok (symName,handle,info.IndexGroup,info.IndexOffset,info.Size)
+            
+            this.Symbols.Add (symName,(symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo> |> Seq.length))
+            Rail.ok (symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo> |> Seq.length)
           with 
             | :? AdsErrorException as adsEx ->
               sprintf "creating handle for %s" symName |> Rail.ads adsEx.ErrorCode 
@@ -167,7 +170,7 @@ module Builder =
         
         let streamLength = 
           vars
-          |> Seq.fold (fun acc (_,handle,_,_,size) ->    
+          |> Seq.fold (fun acc (_,handle,_,_,size,_) ->    
               AdsReservedIndexGroups.SymbolValueByHandle |> int |> writer.Write
               handle |> writer.Write
               size |> writer.Write
@@ -225,7 +228,7 @@ module Builder =
       |> Rail.bind (fun (writer,vars) ->
         vars
         |> Seq.zip (Seq.map snd values)
-        |> Rail.map (fun (value,(_,_,_,_,size)) ->
+        |> Rail.map (fun (value,(_,_,_,_,size,_)) ->
           match value with
             | :? BOOL as v-> writer.Write(v)  |> Rail.ok
             | :? BYTE as v-> writer.Write(v)  |> Rail.ok
@@ -268,7 +271,7 @@ module Builder =
     client.Connect(amsNetId,port)
     {
       Client = client
-      Symbols = ConcurrentDictionary<string,string*int*int64*int64*int>()
+      Symbols = ConcurrentDictionary<string,string*int*int64*int64*int*int>()
       SymbolLoader = client.CreateSymbolInfoLoader()
     }
 
