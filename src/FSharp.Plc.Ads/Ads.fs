@@ -14,17 +14,27 @@ module Builder =
     let isOk: Result<'T> -> bool = function | Choice1Of3 _ -> true | _ -> false
     let isNok: Result<'T> -> bool = function | Choice2Of3 _ -> true | _ -> false  
     let isAdsNok: Result<'T> -> bool = function | Choice3Of3 _ -> true | _ -> false  
-    let value: Result<'T> -> 'T = function | Choice1Of3 v -> v | Choice2Of3 _ -> failwithf "Result is error" | Choice3Of3 _ -> failwithf "Result is ADS error"
-    let error: Result<'T> -> string = function | Choice1Of3 v -> failwithf "Result is value" | Choice2Of3 err -> err | Choice3Of3 _ -> failwithf "Result is ADS error"
+    let value: Result<'T> -> 'T = function 
+      | Choice1Of3 v -> v 
+      | Choice2Of3 _ -> 
+        InvalidOperationException "Result is error" |> raise 
+      | Choice3Of3 _ ->
+        InvalidOperationException "Result is ADS error" |> raise
+    let error: Result<'T> -> string = function 
+      | Choice1Of3 _ -> 
+        InvalidOperationException "Result is value" |> raise
+      | Choice2Of3 err -> err 
+      | Choice3Of3 _ -> 
+        InvalidOperationException "Result is ADS error" |> raise
 
     let adsCode: Result<'T> -> AdsErrorCode = function 
-      | Choice1Of3 _ -> failwithf "Result is ok"
-      | Choice2Of3 _ -> failwithf "Result is non-ADS error"
+      | Choice1Of3 _ -> InvalidOperationException "Result is ok" |> raise
+      | Choice2Of3 _ -> InvalidOperationException "Result is non-ADS error" |> raise
       | Choice3Of3 (code,_) -> code
 
     let adsError: Result<'T> -> string = function 
-      | Choice1Of3 _ -> failwithf "Result is ok"
-      | Choice2Of3 _ -> failwithf "Result is non-ADS error"
+      | Choice1Of3 _ -> InvalidOperationException "Result is ok" |> raise
+      | Choice2Of3 _ -> InvalidOperationException "Result is non-ADS error" |> raise
       | Choice3Of3 (_,err) -> err
 
   module Rail =
@@ -115,7 +125,7 @@ module Builder =
     SymbolLoader: TcAdsSymbolInfoLoader
   }
   with
-    member __.Yield (_) = 
+    member __.Yield (x) = 
       ()
 
     member this.GetSymbolInfo symName =

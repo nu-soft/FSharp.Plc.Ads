@@ -13,7 +13,7 @@ let referenceBinaries = []
 // Web site location for the generated documentation
 let website = "/FSharp.Plc.Ads"
 
-let githubLink = "https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads"
+let githubLink = "https://github.com/nu-soft/FSharp.Plc.Ads"
 
 // Specify more information about your project
 let info =
@@ -103,7 +103,8 @@ let buildReference () =
       parameters = ("root", root)::info,
       sourceRepo = githubLink @@ "tree/master",
       sourceFolder = __SOURCE_DIRECTORY__ @@ ".." @@ "..",
-      publicOnly = true,libDirs = libDirs )
+      publicOnly = true,
+      libDirs = libDirs )
 
 // Build documentation from `fsx` and `md` files in `docs/content`
 let buildDocumentation () =

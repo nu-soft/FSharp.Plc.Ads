@@ -61,6 +61,9 @@ let gitName = "FSharp.Plc.Ads"
 // The url for the raw files hosted
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.githubusercontent.com/nu-soft/FSharp.Plc.Ads"
 
+//path to TCatPlcCtrl.exe
+let plcCtrl = getBuildParamOrDefault "plcCtrl" "c:/TwinCAT/Plc/TCatPlcCtrl.exe"
+
 // --------------------------------------------------------------------------------------
 // END TODO: The rest of the file includes standard build steps
 // --------------------------------------------------------------------------------------
@@ -144,7 +147,7 @@ Target "Build" (fun _ ->
 // Run the unit tests using test runner
 
 Target "PrepareTC2Tests" (fun _ ->
-    Shell.AsyncExec ("c:\TwinCAT\Plc\TCatPlcCtrl.exe", "/show hide /cmd tests/tc2.cmd")
+    Shell.AsyncExec (plcCtrl, "/show hide /cmd tests/tc2.cmd")
     |> Async.StartAsTask
     |> ignore
     System.Threading.Thread.Sleep 5000

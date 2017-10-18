@@ -24,7 +24,7 @@
       <div class="masthead">
         <ul class="nav nav-pills pull-right">
           <li><a href="http://fsharp.org">fsharp.org</a></li>
-          <li><a href="https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads">github page</a></li>
+          <li><a href="https://github.com/nu-soft/FSharp.Plc.Ads">github page</a></li>
         </ul>
         <h3 class="muted"><a href="/FSharp.Plc.Ads/index.html">FSharp.Plc.Ads</a></h3>
       </div>
@@ -54,13 +54,21 @@
           <td class="type-name">
             <a href="fsharp-plc-ads-experimental-builder-adswrapper.html">AdsWrapper</a>
           </td>
-          <td class="xmldoc"></td>
+          <td class="xmldoc"><p>Wraps in <a href="https://infosys.beckhoff.com/english.php?content=../content/1033/tc3_adsnetref/4017828107.html&amp;id=" title="Beckhoff InfoSys">TwinCAT.Ads.TcAdsClient</a> in F# computation expression</p>
+
+</td>
         </tr>
         <tr>
           <td class="type-name">
             <a href="fsharp-plc-ads-experimental-builder-result-1.html">Result<'T></a>
           </td>
-          <td class="xmldoc"></td>
+          <td class="xmldoc"><p>type alias for <code>Choice&lt;'T, string, AdsError * string&gt;</code></p>
+<p><em><code>Choice1Of3</code> is OK <a href="fsharp-plc-ads-experimental-builder-result.html" title="Result">Result</a></em></p>
+<p><em><code>Choice2Of3</code> is NOK <a href="fsharp-plc-ads-experimental-builder-result.html" title="Result">Result</a></em></p>
+<p><em><code>Choice3Of3</code> is ADS NOK <a href="fsharp-plc-ads-experimental-builder-result.html" title="Result">Result</a></em></p>
+<p><code>'T</code> is type of successful return</p>
+
+</td>
         </tr>
     </tbody>
   </table>
@@ -97,11 +105,16 @@
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L256-256" class="github-link">
+            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L266-266" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Creates instance of AdsWrapper</p>
+<p><strong>amsNetId</strong>: AmsNetId of PLC</p>
+<p><strong>port</strong>: target port of PLC</p>
+<p><strong>returns</strong> <a href="fsharp-plc-ads-experimental-builder-adswrapper.html" title="AdsWrapper">AdsWrapper</a></p>
+
+
         </td>
       </tr>
     </tbody>
@@ -115,7 +128,7 @@
             <li><a href="/FSharp.Plc.Ads/index.html">Home page</a></li>
             <li class="divider"></li>
             
-            <li><a href="https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads">Source Code on GitHub</a></li>
+            <li><a href="https://github.com/nu-soft/FSharp.Plc.Ads">Source Code on GitHub</a></li>
             <li><a href="/FSharp.Plc.Ads/license.html">License</a></li>
             <li><a href="/FSharp.Plc.Ads/release-notes.html">Release Notes</a></li>
             
@@ -128,6 +141,6 @@
         </div>
       </div>
     </div>
-    <a href="https://github.com/nu-soft/FSharp.Plc.Ads/nu-soft/FSharp.Plc.Ads"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png" alt="Fork me on GitHub"/></a>
+    <a href="https://github.com/nu-soft/FSharp.Plc.Ads"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png" alt="Fork me on GitHub"/></a>
   </body>
   </html>

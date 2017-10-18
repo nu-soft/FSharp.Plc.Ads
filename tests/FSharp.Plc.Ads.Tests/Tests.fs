@@ -11,9 +11,19 @@ let writeOnce<'T when 'T : struct> (client:TcAdsClient) symName (value: 'T) =
   client.WriteAny(handle, value)
   client.DeleteVariableHandle handle
 
+let writeStringOnce (client:TcAdsClient) symName len (value: string) =
+  let handle = client.CreateVariableHandle symName
+  client.WriteAny(handle, value, [| len |])
+  client.DeleteVariableHandle handle
+
 let readOnce<'T when 'T : struct> (client:TcAdsClient) symName  =
   let handle = client.CreateVariableHandle symName
   let res = client.ReadAny(handle, typeof<'T>) :?> 'T
+  client.DeleteVariableHandle handle
+  res
+let readStrOnce (client:TcAdsClient) symName len =
+  let handle = client.CreateVariableHandle symName
+  let res = client.ReadAny(handle, typeof<string>, [| len |] ) :?> string
   client.DeleteVariableHandle handle
   res
 
@@ -45,6 +55,7 @@ let ``primitive types read`` () =
   let plc = createClient "192.168.68.132.1.1" 801
   
   let inline write symName  = writeOnce setupClient symName 
+  let inline writeStr len symName  = writeStringOnce setupClient symName len
   
   let boolExp = fixture.Create<BOOL>()
   let byteExp = fixture.Create<BYTE>()
@@ -55,6 +66,7 @@ let ``primitive types read`` () =
   let dintExp = fixture.Create<DINT>()
   let realExp = fixture.Create<REAL>()
   let lrealExp = fixture.Create<LREAL>()
+  let stringExp = fixture.Create<string>()
 
   write  ".boolVar"  boolExp 
   write  ".byteVar"  byteExp 
@@ -65,16 +77,18 @@ let ``primitive types read`` () =
   write  ".dintVar"  dintExp 
   write  ".realVar"  realExp 
   write  ".lrealVar" lrealExp
+  writeStr 80 ".string80Var" stringExp 
 
-  plc { readAny ".boolVar" } |> assertEqual boolExp
-  plc { readAny ".byteVar" } |> assertEqual byteExp
-  plc { readAny ".wordVar" } |> assertEqual wordExp
-  plc { readAny ".dwordVar"} |> assertEqual dwordExp
-  plc { readAny ".sintVar" } |> assertEqual sintExp
-  plc { readAny ".intVar"  } |> assertEqual intExp
-  plc { readAny ".dintVar" } |> assertEqual dintExp
-  plc { readAny ".realVar" } |> assertEqual realExp
-  plc { readAny ".lrealVar"} |> assertEqual lrealExp
+  plc { readAny ".boolVar" }    |> assertEqual boolExp
+  plc { readAny ".byteVar" }    |> assertEqual byteExp
+  plc { readAny ".wordVar" }    |> assertEqual wordExp
+  plc { readAny ".dwordVar"}    |> assertEqual dwordExp
+  plc { readAny ".sintVar" }    |> assertEqual sintExp
+  plc { readAny ".intVar"  }    |> assertEqual intExp
+  plc { readAny ".dintVar" }    |> assertEqual dintExp
+  plc { readAny ".realVar" }    |> assertEqual realExp
+  plc { readAny ".lrealVar"}    |> assertEqual lrealExp
+  plc { readAny ".string80Var"} |> assertEqual stringExp
   
 (*
   Do not test for LINT and LWORD in TC2 as those types are not supported
@@ -99,7 +113,8 @@ let ``primitive types write`` () =
   let dintExp = fixture.Create<DINT>()
   let realExp = fixture.Create<REAL>()
   let lrealExp = fixture.Create<LREAL>()
-      
+  let stringExp = fixture.Create<string>()
+    
   plc { writeAny ".boolVar" boolExp }   |> Result.isOk |> Assert.IsTrue
   plc { writeAny ".byteVar" byteExp }   |> Result.isOk |> Assert.IsTrue
   plc { writeAny ".wordVar" wordExp }   |> Result.isOk |> Assert.IsTrue
@@ -109,6 +124,7 @@ let ``primitive types write`` () =
   plc { writeAny ".dintVar" dintExp }   |> Result.isOk |> Assert.IsTrue
   plc { writeAny ".realVar" realExp }   |> Result.isOk |> Assert.IsTrue
   plc { writeAny ".lrealVar" lrealExp } |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".string80Var" stringExp } |> Result.isOk |> Assert.IsTrue
 
   let boolAct:BOOL =  readOnce setupClient ".boolVar"
   let byteAct:BYTE =  readOnce setupClient ".byteVar"
@@ -119,6 +135,7 @@ let ``primitive types write`` () =
   let dintAct:DINT =  readOnce setupClient ".dintVar"
   let realAct:REAL =  readOnce setupClient ".realVar"
   let lrealAct:LREAL = readOnce setupClient  ".lrealVar"
+  let stringAct = readStrOnce setupClient  ".string80Var" 80
 
   Assert.AreEqual(boolExp, boolAct)
   Assert.AreEqual(byteExp, byteAct)
@@ -129,3 +146,4 @@ let ``primitive types write`` () =
   Assert.AreEqual(dintExp, dintAct)
   Assert.AreEqual(realExp, realAct)
   Assert.AreEqual(lrealExp, lrealAct)
+  Assert.AreEqual(stringExp, stringAct)
