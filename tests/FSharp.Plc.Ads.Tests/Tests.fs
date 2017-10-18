@@ -67,7 +67,6 @@ let ``primitive types read`` () =
   let plc = createClient "192.168.68.132.1.1" 801
   
   let inline write symName  = writeOnce setupClient symName 
-  let inline writeStr len symName  = writeStringOnce setupClient symName len
   
   let boolExp = fixture.Create<BOOL>()
   let byteExp = fixture.Create<BYTE>()
@@ -78,7 +77,6 @@ let ``primitive types read`` () =
   let dintExp = fixture.Create<DINT>()
   let realExp = fixture.Create<REAL>()
   let lrealExp = fixture.Create<LREAL>()
-  let stringExp = fixture.Create<string>()
 
   write  ".boolVar"  boolExp 
   write  ".byteVar"  byteExp 
@@ -89,7 +87,6 @@ let ``primitive types read`` () =
   write  ".dintVar"  dintExp 
   write  ".realVar"  realExp 
   write  ".lrealVar" lrealExp
-  writeStr 80 ".string80Var" stringExp 
 
   plc { readAny ".boolVar" }    |> assertEqual boolExp
   plc { readAny ".byteVar" }    |> assertEqual byteExp
@@ -100,7 +97,6 @@ let ``primitive types read`` () =
   plc { readAny ".dintVar" }    |> assertEqual dintExp
   plc { readAny ".realVar" }    |> assertEqual realExp
   plc { readAny ".lrealVar"}    |> assertEqual lrealExp
-  plc { readAny ".string80Var"} |> assertEqual stringExp
   
 (*
   Do not test for LINT and LWORD in TC2 as those types are not supported
@@ -125,7 +121,6 @@ let ``primitive types write`` () =
   let dintExp = fixture.Create<DINT>()
   let realExp = fixture.Create<REAL>()
   let lrealExp = fixture.Create<LREAL>()
-  let stringExp = fixture.Create<string>()
     
   plc { writeAny ".boolVar" boolExp }   |> Result.isOk |> Assert.IsTrue
   plc { writeAny ".byteVar" byteExp }   |> Result.isOk |> Assert.IsTrue
@@ -136,7 +131,6 @@ let ``primitive types write`` () =
   plc { writeAny ".dintVar" dintExp }   |> Result.isOk |> Assert.IsTrue
   plc { writeAny ".realVar" realExp }   |> Result.isOk |> Assert.IsTrue
   plc { writeAny ".lrealVar" lrealExp } |> Result.isOk |> Assert.IsTrue
-  plc { writeAny ".string80Var" stringExp } |> Result.isOk |> Assert.IsTrue
 
   let boolAct:BOOL =  readOnce setupClient ".boolVar"
   let byteAct:BYTE =  readOnce setupClient ".byteVar"
@@ -147,7 +141,6 @@ let ``primitive types write`` () =
   let dintAct:DINT =  readOnce setupClient ".dintVar"
   let realAct:REAL =  readOnce setupClient ".realVar"
   let lrealAct:LREAL = readOnce setupClient  ".lrealVar"
-  let stringAct = readStrOnce setupClient  ".string80Var" 80
 
   Assert.AreEqual(boolExp, boolAct)
   Assert.AreEqual(byteExp, byteAct)
@@ -158,12 +151,10 @@ let ``primitive types write`` () =
   Assert.AreEqual(dintExp, dintAct)
   Assert.AreEqual(realExp, realAct)
   Assert.AreEqual(lrealExp, lrealAct)
-  Assert.AreEqual(stringExp, stringAct)
 
 [<Test>]
 let ``Accessing an array in the PLC - read`` () =
   let fixture = new Fixture()
-  //Set ADS in Start
   let setupClient = new TcAdsClient()
   
   setupClient.Connect("192.168.68.132.1.1", 801)
@@ -198,3 +189,46 @@ let ``Accessing an array in the PLC - write`` () =
   readArrOnce<INT> setupClient ".PLCVar" 100
   |> Seq.zip intPlcExp
   |> Seq.iter Assert.AreEqual
+
+[<Test>]
+let ``Reading and writing of string variables - read`` () = 
+
+  let fixture = new Fixture()
+
+  let setupClient = new TcAdsClient()
+  setupClient.Connect("192.168.68.132.1.1", 801)
+  let plc = createClient "192.168.68.132.1.1" 801
+  
+  let inline writeStr len symName  = writeStringOnce setupClient symName len
+  
+  let stringExp = fixture.Create<string>()
+  let string1Exp = fixture.Create<string>() |> Seq.head |> string 
+
+  
+  writeStr 80 ".string80Var" stringExp 
+  writeStr 1 ".string1Var" string1Exp 
+
+  
+  plc { readAny ".string80Var"} |> assertEqual stringExp
+  plc { readAny ".string1Var"} |> assertEqual string1Exp
+  
+[<Test>]
+let ``Reading and writing of string variables - write`` () = 
+
+  let fixture = new Fixture()
+  //Set ADS in Start
+  let setupClient = new TcAdsClient()
+  
+  setupClient.Connect("192.168.68.132.1.1", 801)
+  let plc = createClient "192.168.68.132.1.1" 801
+
+  
+  let stringExp = fixture.Create<string>()
+  let string1Exp = fixture.Create<string>()
+    
+  
+  plc { writeAny ".string80Var" stringExp } |> Result.isOk |> Assert.IsTrue
+  let stringAct = readStrOnce setupClient  ".string80Var" 80
+  Assert.AreEqual(stringExp, stringAct)
+
+  plc { writeAny ".string1Var" string1Exp } |> Result.isAdsNok |> Assert.IsTrue
