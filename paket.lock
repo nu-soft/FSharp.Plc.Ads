@@ -521,3 +521,4 @@ NUGET
   remote: https://www.nuget.org/api/v2
     NUnit (2.6.4)
     NUnit.Runners (2.6.4)
+    NUnitTestAdapter (2.1.1)
