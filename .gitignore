@@ -193,3 +193,4 @@ docsrc/tools/FSharp.Formatting.svclog
 *.tpy
 *.ci
 *.ri
+*.ASD
