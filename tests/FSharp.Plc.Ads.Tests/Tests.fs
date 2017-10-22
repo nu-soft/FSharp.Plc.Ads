@@ -23,6 +23,48 @@ let writeStringOnce (client:TcAdsClient) symName len (value: string) =
   client.WriteAny(handle, value, [| len |])
   client.DeleteVariableHandle handle
 
+let writeDTOnce (client:TcAdsClient) symName (value:DateTime) =
+  use adsStream = new AdsStream(4)
+  use writer = new AdsBinaryWriter(adsStream)
+  writer.WritePlcType(value)
+  
+  let handle = client.CreateVariableHandle symName
+  client.Write(handle,adsStream)
+  client.DeleteVariableHandle handle
+
+
+let writeTSOnce (client:TcAdsClient) symName (value:TimeSpan) =
+  use adsStream = new AdsStream(4)
+  use writer = new AdsBinaryWriter(adsStream)
+  writer.WritePlcType(value)
+  
+  let handle = client.CreateVariableHandle symName
+  client.Write(handle,adsStream)
+  client.DeleteVariableHandle handle
+
+let readDTOnce (client:TcAdsClient) symName  =
+  use adsStream = new AdsStream(4)
+  use reader = new AdsBinaryReader(adsStream)
+  
+  let handle = client.CreateVariableHandle symName
+  client.Read(handle,adsStream) |> ignore
+  
+  let res = reader.ReadPlcDATE()
+  client.DeleteVariableHandle handle
+  res
+
+
+let readTSOnce (client:TcAdsClient) symName  =
+  use adsStream = new AdsStream(4)
+  use reader = new AdsBinaryReader(adsStream)
+  
+  let handle = client.CreateVariableHandle symName
+  client.Read(handle,adsStream) |> ignore
+  
+  let res = reader.ReadPlcTIME()
+  client.DeleteVariableHandle handle
+  res
+
 let readOnce<'T when 'T : struct> (client:TcAdsClient) symName  =
   let handle = client.CreateVariableHandle symName
   let res = client.ReadAny(handle, typeof<'T>) :?> 'T
@@ -232,3 +274,61 @@ let ``Reading and writing of string variables - write`` () =
   Assert.AreEqual(stringExp, stringAct)
 
   plc { writeAny ".string1Var" string1Exp } |> Result.isAdsNok |> Assert.IsTrue
+
+[<Test>]
+let ``Reading and writing of date and time variables - read`` () = 
+
+  let fixture = new Fixture()
+
+  let setupClient = new TcAdsClient()
+  setupClient.Connect("192.168.68.132.1.1", 801)
+  let plc = createClient "192.168.68.132.1.1" 801
+  
+  
+  let timeExp = fixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds
+  let todExp = fixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds
+  let dateTimeExp = fixture.Create<DateTime>().Date + (fixture.Create<uint32>() / 1000u * 1000u |> float |> TimeSpan.FromMilliseconds)
+  let dateExp = fixture.Create<DateTime>().Date
+  
+  writeTSOnce setupClient ".timeVar" timeExp
+  writeTSOnce setupClient ".todVar" todExp
+  writeDTOnce setupClient ".dateVar" dateExp
+  writeDTOnce setupClient ".dtVar" dateTimeExp
+
+  
+  plc { readAny ".timeVar" } |> assertEqual timeExp
+  plc { readAny ".todVar" } |> assertEqual todExp
+  plc { readAny ".dateVar" } |> assertEqual dateExp
+  plc { readAny ".dtVar" } |> assertEqual dateTimeExp
+  
+[<Test>]
+let ``Reading and writing of date and time variables - write`` () = 
+
+  let fixture = new Fixture()
+  //Set ADS in Start
+  let setupClient = new TcAdsClient()
+  
+  setupClient.Connect("192.168.68.132.1.1", 801)
+  let plc = createClient "192.168.68.132.1.1" 801
+  
+  
+  let timeExp = fixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds
+  let todExp = fixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds
+  let dateTimeExp = fixture.Create<DateTime>().Date + (fixture.Create<uint32>() / 1000u * 1000u |> float |> TimeSpan.FromMilliseconds)
+  let dateExp = fixture.Create<DateTime>().Date
+
+  plc { writeAny ".timeVar" timeExp}   |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".todVar" todExp}     |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".dateVar" dateExp}   |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".dtVar" dateTimeExp} |> Result.isOk |> Assert.IsTrue
+  
+  
+  let timeAct = readTSOnce setupClient ".timeVar" 
+  let todAct = readTSOnce setupClient ".todVar" 
+  let dateTimeAct=readDTOnce setupClient ".dtVar" 
+  let dateAct = readDTOnce setupClient ".dateVar" 
+
+  Assert.AreEqual(timeExp, timeAct)
+  Assert.AreEqual(todExp, todAct)
+  Assert.AreEqual(dateTimeExp, dateTimeAct)
+  Assert.AreEqual(dateExp, dateAct)

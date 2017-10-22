@@ -66,6 +66,7 @@ module Builder =
     
 
   module Helpers =
+    open TwinCAT.PlcOpen
     
 
     let parseErrorCodes op (code: AdsErrorCode) = sprintf "%sAMS ERROR: %A" op code
@@ -73,6 +74,10 @@ module Builder =
     let readAny<'T> (client: TcAdsClient) (symName,handle,_,_,size,arrDim) =
       try
         match typeof<'T> with
+          | str when str = typeof<TimeSpan> ->
+            client.ReadAny(handle,typeof<uint32>) :?> uint32 |>  TimeBase.ValueToTime :> obj :?> 'T
+          | str when str = typeof<DateTime> ->
+            client.ReadAny(handle,typeof<uint32>) :?> uint32 |>  DateBase.ValueToDate :> obj :?> 'T
           | str when str = typeof<string> -> 
             client.ReadAny(handle,typeof<'T>, [|size|]) :?> 'T
           | arr when arr.IsArray && arr.GetElementType().IsValueType ->
@@ -89,10 +94,15 @@ module Builder =
     let writeAny (client: TcAdsClient) (value: 'T) (symName, handle,_,_,size,_) =
       let type' = typeof<'T>
       try
-        if type' = typeof<string> then
-          client.WriteAny(handle, value, [| size |])
-        else
-          client.WriteAny(handle, value)
+        match type' with
+          | str when str = typeof<TimeSpan> ->
+            client.WriteAny(handle, value :> obj :?> TimeSpan |> TimeBase.TimeToValue |> uint32 ) 
+          | str when str = typeof<DateTime> ->
+            client.WriteAny(handle,value :> obj :?> DateTime |> DateBase.DateToValue  |> uint32)
+          | str when str = typeof<string> ->
+            client.WriteAny(handle, value, [| size |])
+          | _ ->
+            client.WriteAny(handle, value)
         Rail.ok ()
       with
         | :? AdsErrorException as adsEx ->
@@ -211,7 +221,7 @@ module Builder =
       )
       |> Rail.bind (Seq.toArray >> Rail.ok)
       |> Rail.bind (fun ele -> FSharpValue.MakeTuple(ele,typeof<'T>) :?> 'T |> Rail.ok)
-      
+    
     [<CustomOperation("writeAny")>] 
     member this.WriteAny<'T> (_, symName, value: 'T) =
       this.GetSymbolInfo symName 
