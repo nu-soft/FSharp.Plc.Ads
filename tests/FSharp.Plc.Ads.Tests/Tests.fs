@@ -33,7 +33,7 @@ let writeDTOnce (client:TcAdsClient) symName (value:DateTime) =
   client.DeleteVariableHandle handle
 
 
-let writeTSOnce (client:TcAdsClient) symName (value:TimeSpan) =
+let writeTSOnce (client:TcAdsClient) symName  (value:TimeSpan) =
   use adsStream = new AdsStream(4)
   use writer = new AdsBinaryWriter(adsStream)
   writer.WritePlcType(value)
