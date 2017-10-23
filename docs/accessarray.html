@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>Accessing an array in the PLC
+</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Project has no summmary; update build.fsx"/>
+    <meta name="author" content="Update Author in build.fsx"/>
+
+    <script src="https://code.jquery.com/jquery-1.8.0.js"></script>
+    <script src="https://code.jquery.com/ui/1.8.23/jquery-ui.js"></script>
+    <script src="https://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/js/bootstrap.min.js"></script>
+    <link href="https://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/css/bootstrap-combined.min.css" rel="stylesheet"/>
+
+    <link type="text/css" rel="stylesheet" href="/FSharp.Plc.Ads/content/style.css" />
+    <script type="text/javascript" src="/FSharp.Plc.Ads/content/tips.js"></script>
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="container">
+      <div class="masthead">
+        <ul class="nav nav-pills pull-right">
+          <li><a href="http://fsharp.org">fsharp.org</a></li>
+          <li><a href="https://github.com/nu-soft/FSharp.Plc.Ads">github page</a></li>
+        </ul>
+        <h3 class="muted"><a href="/FSharp.Plc.Ads/index.html">FSharp.Plc.Ads</a></h3>
+      </div>
+      <hr />
+      <div class="row">
+        <div class="span9" id="main">
+          
+<h1><a name="Accessing-an-array-in-the-PLC" class="anchor" href="#Accessing-an-array-in-the-PLC">Accessing an array in the PLC</a></h1>
+<p>Sample based on <a href="https://infosys.beckhoff.com/english.php?content=../content/1033/tc3_adssamples_net/html/twincat.ads.sample01.html">Beckhoff Infosys - Sample 01</a></p>
+<p><strong>Task</strong></p>
+<p>The PLC contains an array that is to be read by the .Net application using a read command.</p>
+<p><strong>Description</strong></p>
+<p>The PLC contains an array of 100 elements of type integer (2 bytes). The array in the PLC is to be filled with the values from 3500 to 3599.</p>
+<p><strong>PLC program</strong></p>
+<table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
+<span class="l">2: </span>
+<span class="l">3: </span>
+<span class="l">4: </span>
+<span class="l">5: </span>
+<span class="l">6: </span>
+<span class="l">7: </span>
+<span class="l">8: </span>
+</pre></td>
+<td class="snippet"><pre class="fssnip"><code lang="pascal">PROGRAM MAIN
+VAR
+  PLCVar : ARRAY [0..99] OF INT;
+  Index: BYTE;
+END_VAR
+FOR Index := 0 TO 99 DO
+  PLCVar[Index] := 3500 + INDEX;
+END_FOR
+</code></pre></td></tr></table>
+<p><strong>F# program</strong></p>
+<table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l"> 1: </span>
+<span class="l"> 2: </span>
+<span class="l"> 3: </span>
+<span class="l"> 4: </span>
+<span class="l"> 5: </span>
+<span class="l"> 6: </span>
+<span class="l"> 7: </span>
+<span class="l"> 8: </span>
+<span class="l"> 9: </span>
+<span class="l">10: </span>
+<span class="l">11: </span>
+<span class="l">12: </span>
+<span class="l">13: </span>
+<span class="l">14: </span>
+<span class="l">15: </span>
+<span class="l">16: </span>
+<span class="l">17: </span>
+<span class="l">18: </span>
+<span class="l">19: </span>
+<span class="l">20: </span>
+<span class="l">21: </span>
+<span class="l">22: </span>
+<span class="l">23: </span>
+<span class="l">24: </span>
+<span class="l">25: </span>
+<span class="l">26: </span>
+<span class="l">27: </span>
+</pre></td>
+<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="prep">#r</span> <span class="s">&quot;FSharp.Plc.Ads.dll&quot;</span>
+<span class="c">//using IEC 61131-3 type aliases for convenience</span>
+<span class="prep">#r</span> <span class="s">&quot;NuSoft.FSharp.IEC.DataTypes.dll&quot;</span>
+<span class="k">open</span> <span class="i">FSharp</span><span class="o">.</span><span class="i">Plc</span><span class="o">.</span><span class="i">Ads</span><span class="o">.</span><span class="i">Experimental</span>
+<span class="k">open</span> <span class="i">System</span>
+<span class="k">let</span> <span class="i">amsNetId</span> <span class="o">=</span> <span class="s">&quot;192.168.68.132.1.1&quot;</span>
+<span class="k">let</span> <span class="i">amsPort</span> <span class="o">=</span> <span class="n">801</span>
+<span class="c">//instantiate builder for specific TwinCAT instance</span>
+<span class="k">let</span> <span class="i">plc</span> <span class="o">=</span> <span class="i">createClient</span> <span class="i">amsNetId</span> <span class="i">amsPort</span>
+
+<span class="k">let</span> <span class="i">myInputArray</span> <span class="o">=</span> [| <span class="n">3500s</span> <span class="o">..</span> <span class="n">3599s</span> |]
+
+<span class="i">plc</span> {
+  <span class="i">writeAny</span> <span class="s">&quot;MAIN.PLCVar&quot;</span> <span class="i">myInputArray</span>
+}
+<span class="o">|&gt;</span> <span class="k">function</span> 
+  | <span class="i">Choice1Of3</span> _ <span class="k">-&gt;</span> ()<span class="c">// handle success</span>
+  | <span class="i">Choice2Of3</span> <span class="i">errMsg</span> <span class="k">-&gt;</span> ()<span class="c">// handle error</span>
+  | <span class="i">Choice3Of3</span> (<span class="i">adsCode</span>,<span class="i">additionalInfo</span>) <span class="k">-&gt;</span> ()<span class="c">// handle ADS error</span>
+
+<span class="i">plc</span> {
+  <span class="i">readAny</span> <span class="s">&quot;MAIN.PLCVar&quot;</span>
+}
+<span class="o">|&gt;</span> <span class="k">function</span> 
+  | <span class="i">Choice1Of3</span> (<span class="i">readArray</span><span class="o">:</span> <span class="i">INT</span> <span class="i">array</span>) <span class="k">-&gt;</span> ()<span class="c">// handle success</span>
+  | <span class="i">Choice2Of3</span> <span class="i">errMsg</span> <span class="k">-&gt;</span> ()<span class="c">// handle error</span>
+  | <span class="i">Choice3Of3</span> (<span class="i">adsCode</span>,<span class="i">additionalInfo</span>) <span class="k">-&gt;</span> ()<span class="c">// handle ADS error</span>
+</code></pre></td>
+</tr>
+</table>
+
+
+        </div>
+        <div class="span3">
+          <img src="/FSharp.Plc.Ads/img/logo.png" alt="F# Project" style="width:150px;margin:10px" />  
+          <ul class="nav nav-list" id="menu" style="margin-top: 20px;">
+            <li class="nav-header">FSharp.Plc.Ads</li>
+            <li><a href="/FSharp.Plc.Ads/index.html">Home page</a></li>
+            <li class="divider"></li>
+            
+            <li><a href="https://github.com/nu-soft/FSharp.Plc.Ads">Source Code on GitHub</a></li>
+            <li><a href="/FSharp.Plc.Ads/license.html">License</a></li>
+            <li><a href="/FSharp.Plc.Ads/release-notes.html">Release Notes</a></li>
+            
+            <li class="nav-header">Getting started</li>
+            <li><a href="/FSharp.Plc.Ads/accessarray.html">Accessing an array in the PLC</a></li>
+            <li><a href="/FSharp.Plc.Ads/readwritestring.html">Reading and writing of string variables</a></li>
+            <li><a href="/FSharp.Plc.Ads/readwritedatetime.html">Reading and writing of TIME/DATE variables</a></li>
+            
+
+            <li class="nav-header">Documentation</li>
+            <li><a href="/FSharp.Plc.Ads/reference/index.html">API Reference</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <a href="https://github.com/nu-soft/FSharp.Plc.Ads"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png" alt="Fork me on GitHub"/></a>
+  </body>
+  </html>
