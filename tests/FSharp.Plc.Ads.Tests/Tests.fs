@@ -16,6 +16,30 @@ let writeArrOnce<'T when 'T : struct> (client:TcAdsClient) symName (value: 'T ar
   let handle = client.CreateVariableHandle symName
   client.WriteAny(handle, value)
   client.DeleteVariableHandle handle
+
+let writeStrArrOnce (client:TcAdsClient) symName  arrLen strLen (value: string array) =
+  let handle = client.CreateVariableHandle symName
+  client.WriteAny(handle, value, [| strLen ; arrLen|])
+  client.DeleteVariableHandle handle
+
+let writeTSArrOnce (client:TcAdsClient) symName (value: TimeSpan array) =
+  use adsStream = new AdsStream(value |> Seq.length |> (*) 4)
+  use writer = new AdsBinaryWriter(adsStream)
+  value |> Seq.iter writer.WritePlcType
+  
+  let handle = client.CreateVariableHandle symName
+  client.Write(handle,adsStream)
+  client.DeleteVariableHandle handle
+
+let writeDTArrOnce (client:TcAdsClient) symName (value: DateTime array) =
+
+  use adsStream = new AdsStream(value |> Seq.length |> (*) 4)
+  use writer = new AdsBinaryWriter(adsStream)
+  value |> Seq.iter writer.WritePlcType
+  
+  let handle = client.CreateVariableHandle symName
+  client.Write(handle,adsStream)
+  client.DeleteVariableHandle handle
   
 
 let writeStringOnce (client:TcAdsClient) symName len (value: string) =
@@ -86,6 +110,25 @@ let assertEqual (expected:'T) (act:Result<'T>) =
     | Choice1Of3 a -> Assert.AreEqual(expected,a)
     | Choice2Of3 err -> Assert.Fail err
     | Choice3Of3 (code,err) -> sprintf "%A: %s" code err |> Assert.Fail
+
+let assertArraysEqual (expected:'T array) (act:Result<'T array>) = 
+  match act with
+    | Choice1Of3 a -> 
+      Assert.AreEqual(expected|>Seq.length,a|>Seq.length)
+      expected
+      |> Seq.zip a
+      |> Seq.iter Assert.AreEqual
+
+    | Choice2Of3 err -> Assert.Fail err
+    | Choice3Of3 (code,err) -> sprintf "%A: %s" code err |> Assert.Fail
+
+let fixture = new Fixture()
+let spareFixture = new Fixture()
+
+[<SetUp>]
+let AutoFixtureSetup () =
+  fixture.Register<TimeSpan>(fun _ -> spareFixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds)
+  fixture.Register<DateTime>(fun _ -> spareFixture.Create<DateTime>().Date + (spareFixture.Create<uint32>() * 1000u |> float |> TimeSpan.FromMilliseconds))
   
 
 [<Test>]
@@ -101,8 +144,7 @@ let ``Try create handle to nonexisting symbolic name`` () =
 *)
 [<Test>]
 let ``primitive types read`` () = 
-
-  let fixture = new Fixture()
+  
 
   let setupClient = new TcAdsClient()
   setupClient.Connect("192.168.68.132.1.1", 801)
@@ -146,7 +188,6 @@ let ``primitive types read`` () =
 [<Test>]
 let ``primitive types write`` () = 
 
-  let fixture = new Fixture()
   //Set ADS in Start
   let setupClient = new TcAdsClient()
   
@@ -196,7 +237,6 @@ let ``primitive types write`` () =
 
 [<Test>]
 let ``Accessing an array in the PLC - read`` () =
-  let fixture = new Fixture()
   let setupClient = new TcAdsClient()
   
   setupClient.Connect("192.168.68.132.1.1", 801)
@@ -217,7 +257,6 @@ let ``Accessing an array in the PLC - read`` () =
 
 [<Test>]
 let ``Accessing an array in the PLC - write`` () =
-  let fixture = new Fixture()
   //Set ADS in Start
   let setupClient = new TcAdsClient()
   
@@ -234,8 +273,6 @@ let ``Accessing an array in the PLC - write`` () =
 
 [<Test>]
 let ``Reading and writing of string variables - read`` () = 
-
-  let fixture = new Fixture()
 
   let setupClient = new TcAdsClient()
   setupClient.Connect("192.168.68.132.1.1", 801)
@@ -256,8 +293,6 @@ let ``Reading and writing of string variables - read`` () =
   
 [<Test>]
 let ``Reading and writing of string variables - write`` () = 
-
-  let fixture = new Fixture()
   //Set ADS in Start
   let setupClient = new TcAdsClient()
   
@@ -278,16 +313,14 @@ let ``Reading and writing of string variables - write`` () =
 [<Test>]
 let ``Reading and writing of date and time variables - read`` () = 
 
-  let fixture = new Fixture()
-
   let setupClient = new TcAdsClient()
   setupClient.Connect("192.168.68.132.1.1", 801)
   let plc = createClient "192.168.68.132.1.1" 801
   
   
-  let timeExp = fixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds
-  let todExp = fixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds
-  let dateTimeExp = fixture.Create<DateTime>().Date + (fixture.Create<uint32>() / 1000u * 1000u |> float |> TimeSpan.FromMilliseconds)
+  let timeExp = fixture.Create<TimeSpan>()
+  let todExp = fixture.Create<TimeSpan>()
+  let dateTimeExp = fixture.Create<DateTime>()
   let dateExp = fixture.Create<DateTime>().Date
   
   writeTSOnce setupClient ".timeVar" timeExp
@@ -303,8 +336,6 @@ let ``Reading and writing of date and time variables - read`` () =
   
 [<Test>]
 let ``Reading and writing of date and time variables - write`` () = 
-
-  let fixture = new Fixture()
   //Set ADS in Start
   let setupClient = new TcAdsClient()
   
@@ -312,9 +343,9 @@ let ``Reading and writing of date and time variables - write`` () =
   let plc = createClient "192.168.68.132.1.1" 801
   
   
-  let timeExp = fixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds
-  let todExp = fixture.Create<uint32>() |> float |> TimeSpan.FromMilliseconds
-  let dateTimeExp = fixture.Create<DateTime>().Date + (fixture.Create<uint32>() / 1000u * 1000u |> float |> TimeSpan.FromMilliseconds)
+  let timeExp = fixture.Create<TimeSpan>()
+  let todExp = fixture.Create<TimeSpan>()
+  let dateTimeExp = fixture.Create<DateTime>()
   let dateExp = fixture.Create<DateTime>().Date
 
   plc { writeAny ".timeVar" timeExp}   |> Result.isOk |> Assert.IsTrue
@@ -332,3 +363,113 @@ let ``Reading and writing of date and time variables - write`` () =
   Assert.AreEqual(todExp, todAct)
   Assert.AreEqual(dateTimeExp, dateTimeAct)
   Assert.AreEqual(dateExp, dateAct)
+
+[<Test>]
+let ``1-dim arrays read`` () = 
+
+  let setupClient = new TcAdsClient()
+  setupClient.Connect("192.168.68.132.1.1", 801)
+  let plc = createClient "192.168.68.132.1.1" 801
+  
+  let inline write symName  = writeArrOnce setupClient symName 
+
+  
+  
+  let boolExp = fixture.CreateMany<BOOL>(21).ToArray()
+  let byteExp = fixture.CreateMany<BYTE>(1).ToArray()
+  let wordExp = fixture.CreateMany<WORD>(19).ToArray()
+  let dwordExp = fixture.CreateMany<DWORD>(18).ToArray()
+  let sintExp = fixture.CreateMany<SINT>(17).ToArray()
+  let intExp = fixture.CreateMany<INT>(15).ToArray()
+  let dintExp = fixture.CreateMany<DINT>(count = 13).ToArray()
+  let realExp = fixture.CreateMany<REAL>(11).ToArray()
+  let lrealExp = fixture.CreateMany<LREAL>(10).ToArray()
+  let stringExp = fixture.CreateMany<string>(9).ToArray()
+  let timeExp = fixture.CreateMany<TimeSpan>(6).ToArray()
+  let todExp = fixture.CreateMany<TimeSpan>(5).ToArray()
+  let dateExp = fixture.CreateMany<DateTime>(4).ToArray()
+  let dtExp = fixture.CreateMany<DateTime>(3).ToArray() |> Array.map (fun dt -> dt.Date)
+
+  write  ".arrboolVar"  boolExp 
+  write  ".arrbyteVar"  byteExp 
+  write  ".arrwordVar"  wordExp 
+  write  ".arrdwordVar" dwordExp
+  write  ".arrsintVar"  sintExp 
+  write  ".arrintVar"   intExp 
+  write  ".arrdintVar"  dintExp 
+  write  ".arrrealVar"  realExp 
+  write  ".arrlrealVar" lrealExp
+  writeStrArrOnce setupClient ".arrstringVar" 9 80 stringExp 
+  writeTSArrOnce setupClient  ".arrtimeVar" timeExp
+  writeTSArrOnce setupClient  ".arrtodVar" todExp
+  writeDTArrOnce setupClient  ".arrdateVar" dateExp
+  writeDTArrOnce setupClient  ".arrdtVar" dtExp
+
+  plc { readAny ".arrboolVar" }    |> assertArraysEqual boolExp
+  plc { readAny ".arrbyteVar" }    |> assertArraysEqual byteExp
+  plc { readAny ".arrwordVar" }    |> assertArraysEqual wordExp
+  plc { readAny ".arrdwordVar"}    |> assertArraysEqual dwordExp
+  plc { readAny ".arrsintVar" }    |> assertArraysEqual sintExp
+  plc { readAny ".arrintVar"  }    |> assertArraysEqual intExp
+  plc { readAny ".arrdintVar" }    |> assertArraysEqual dintExp
+  plc { readAny ".arrrealVar" }    |> assertArraysEqual realExp
+  plc { readAny ".arrlrealVar"}    |> assertArraysEqual lrealExp
+  plc { readAny ".arrstringVar"}    |> assertArraysEqual stringExp
+  plc { readAny ".arrtimeVar"}    |> assertArraysEqual timeExp
+  plc { readAny ".arrtodVar"}    |> assertArraysEqual todExp
+  plc { readAny ".arrdateVar"}    |> assertArraysEqual dateExp
+  plc { readAny ".arrdtVar"}    |> assertArraysEqual dtExp
+  
+(*
+  Do not test for LINT and LWORD in TC2 as those types are not supported
+*)
+(*
+[<Test>]
+let ``primitive type arrays write`` () = 
+
+  //Set ADS in Start
+  let setupClient = new TcAdsClient()
+  
+  setupClient.Connect("192.168.68.132.1.1", 801)
+  let plc = createClient "192.168.68.132.1.1" 801
+
+  let boolExp = fixture.Create<BOOL>()
+  let byteExp = fixture.Create<BYTE>()
+  let wordExp = fixture.Create<WORD>()
+  let dwordExp = fixture.Create<DWORD>()
+  
+  let sintExp = fixture.Create<SINT>()
+  let intExp = fixture.Create<INT>()
+  let dintExp = fixture.Create<DINT>()
+  let realExp = fixture.Create<REAL>()
+  let lrealExp = fixture.Create<LREAL>()
+    
+  plc { writeAny ".boolVar" boolExp }   |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".byteVar" byteExp }   |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".wordVar" wordExp }   |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".dwordVar" dwordExp } |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".sintVar" sintExp }   |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".intVar" intExp }     |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".dintVar" dintExp }   |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".realVar" realExp }   |> Result.isOk |> Assert.IsTrue
+  plc { writeAny ".lrealVar" lrealExp } |> Result.isOk |> Assert.IsTrue
+
+  let boolAct:BOOL =  readOnce setupClient ".boolVar"
+  let byteAct:BYTE =  readOnce setupClient ".byteVar"
+  let wordAct:WORD =  readOnce setupClient ".wordVar"
+  let dwordAct:DWORD = readOnce setupClient  ".dwordVar"
+  let sintAct:SINT =  readOnce setupClient ".sintVar"
+  let intAct:INT =   readOnce setupClient ".intVar"
+  let dintAct:DINT =  readOnce setupClient ".dintVar"
+  let realAct:REAL =  readOnce setupClient ".realVar"
+  let lrealAct:LREAL = readOnce setupClient  ".lrealVar"
+
+  Assert.AreEqual(boolExp, boolAct)
+  Assert.AreEqual(byteExp, byteAct)
+  Assert.AreEqual(wordExp, wordAct)
+  Assert.AreEqual(dwordExp, dwordAct)
+  Assert.AreEqual(sintExp, sintAct)
+  Assert.AreEqual(intExp, intAct)
+  Assert.AreEqual(dintExp, dintAct)
+  Assert.AreEqual(realExp, realAct)
+  Assert.AreEqual(lrealExp, lrealAct) *)

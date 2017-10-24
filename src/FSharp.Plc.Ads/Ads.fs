@@ -78,8 +78,22 @@ module Builder =
             client.ReadAny(handle,typeof<uint32>) :?> uint32 |>  TimeBase.ValueToTime :> obj :?> 'T
           | str when str = typeof<DateTime> ->
             client.ReadAny(handle,typeof<uint32>) :?> uint32 |>  DateBase.ValueToDate :> obj :?> 'T
+          | str when str = typeof<TimeSpan array> ->
+            client.ReadAny(handle,typeof<uint32 array>, [|arrDim|])
+            :?> uint32 array 
+            |> Array.map TimeBase.ValueToTime 
+            :> obj 
+            :?> 'T
+          | str when str = typeof<DateTime array> ->
+            client.ReadAny(handle,typeof<uint32 array>, [|arrDim|])
+            :?> uint32 array 
+            |> Array.map DateBase.ValueToDate
+            :> obj 
+            :?> 'T
           | str when str = typeof<string> -> 
             client.ReadAny(handle,typeof<'T>, [|size|]) :?> 'T
+          | str when str = typeof<string array> -> 
+            client.ReadAny(handle,typeof<'T>, [| size / arrDim - 1; arrDim |]) :?> 'T
           | arr when arr.IsArray && arr.GetElementType().IsValueType ->
             client.ReadAny(handle,typeof<'T>, [|arrDim|]) :?> 'T
           | _ -> 
@@ -89,7 +103,7 @@ module Builder =
         | :? AdsErrorException as adsEx ->
           sprintf "attempt to read %s" symName |> Rail.ads adsEx.ErrorCode 
 
-        | ex -> ex.Message |> Rail.nok
+        | ex -> ex.Message |> sprintf "attempt to read %s: %s" symName |> Rail.nok
 
     let writeAny (client: TcAdsClient) (value: 'T) (symName, handle,_,_,size,_) =
       let type' = typeof<'T>
@@ -284,6 +298,3 @@ module Builder =
       Symbols = ConcurrentDictionary<string,string*int*int64*int64*int*int>()
       SymbolLoader = client.CreateSymbolInfoLoader()
     }
-
-
-  

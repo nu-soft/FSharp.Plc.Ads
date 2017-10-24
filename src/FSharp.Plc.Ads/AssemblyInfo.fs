@@ -5,8 +5,8 @@ open System.Reflection
 [<assembly: AssemblyTitleAttribute("FSharp.Plc.Ads")>]
 [<assembly: AssemblyProductAttribute("FSharp.Plc.Ads")>]
 [<assembly: AssemblyDescriptionAttribute("Project has no summmary; update build.fsx")>]
-[<assembly: AssemblyVersionAttribute("1.0.1")>]
-[<assembly: AssemblyFileVersionAttribute("1.0.1")>]
+[<assembly: AssemblyVersionAttribute("0.0.1")>]
+[<assembly: AssemblyFileVersionAttribute("0.0.1")>]
 [<assembly: AssemblyConfigurationAttribute("Release")>]
 do ()
 
@@ -14,6 +14,6 @@ module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "FSharp.Plc.Ads"
     let [<Literal>] AssemblyProduct = "FSharp.Plc.Ads"
     let [<Literal>] AssemblyDescription = "Project has no summmary; update build.fsx"
-    let [<Literal>] AssemblyVersion = "1.0.1"
-    let [<Literal>] AssemblyFileVersion = "1.0.1"
+    let [<Literal>] AssemblyVersion = "0.0.1"
+    let [<Literal>] AssemblyFileVersion = "0.0.1"
     let [<Literal>] AssemblyConfiguration = "Release"
