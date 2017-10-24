@@ -3,6 +3,8 @@
 // --------------------------------------------------------------------------------------
 
 #r @"packages/build/FAKE/tools/FakeLib.dll"
+#r @"packages\build\FSharp.ComProvider\lib\net40\FSharp.ComProvider.dll"
+#r "System.Xml.Linq.dll"
 open Fake
 open Fake.Git
 open Fake.AssemblyInfoFile
@@ -358,6 +360,28 @@ Target "BuildPackage" DoNothing
 // Run all targets by default. Invoke 'build <Target>' to override
 
 Target "All" DoNothing
+
+type Test = TypeLib.``Beckhoff TCatSysManager 1.1 Type Library``.``1.1``
+
+Target "TC" (fun _ ->
+    let sys = Test.TcSysManagerClass()
+    (*sys.NewConfiguration () 
+    let xmlString = "<TreeItem><RoutePrj><TargetList><BroadcastSearch>true</BroadcastSearch></TargetList></RoutePrj></TreeItem>";
+    let routesNode = sys.LookupTreeItem("TIRR");
+    routesNode.ConsumeXml(xmlString);
+
+    let result = routesNode.ProduceXml()
+    System.Xml.Linq.XDocument.Parse(result).ToString() |> printfn "%s" *)
+
+    sys.NewConfiguration () 
+    let xmlString = "<TreeItem><ItemName>Route Settings</ItemName><PathName>TIRR</PathName><RoutePrj><TargetList><BroadcastSearch>true</BroadcastSearch></TargetList><AddRoute><RemoteName>RouteName</RemoteName><RemoteNetId>192.168.68.132.1.1</RemoteNetId><RemoteIpAddr>192.168.68.132</RemoteIpAddr><UserName>ppaluch</UserName><Password>1</Password><NoEncryption></NoEncryption></AddRoute></RoutePrj></TreeItem>";
+    let routesNode = sys.LookupTreeItem("TIRR");
+    routesNode.ConsumeXml(xmlString);
+
+    let result = routesNode.ProduceXml()
+    System.Xml.Linq.XDocument.Parse(result).ToString() |> printfn "%s" 
+    ()
+)
 
 
 "AssemblyInfo"
