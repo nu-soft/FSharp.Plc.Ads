@@ -2,9 +2,9 @@ type project
 title
     FSharp.Plc.Ads
 owners
-    Pawe³ Paluch
+    Pawel Paluch
 authors 
-    Pawe³ Paluch
+    Pawel Paluch
 projectUrl
     https://github.com/nu-soft/FSharp.Plc.Ads/
 iconUrl
@@ -12,14 +12,14 @@ iconUrl
 licenseUrl
     https://github.com/nu-soft/FSharp.Plc.Ads/blob/master/LICENSE
 requireLicenseAcceptance
-    true
+    false
 copyright
     Copyright 2017
 tags
-    fsharp
+    fsharp plc ads twincat
 summary
-    Summary not set
+    FSharp wrapper over TwinCAT.Ads library
 description
-    Description not set
+    FSharp wrapper over TwinCAT.Ads library
 
 
