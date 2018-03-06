@@ -9,7 +9,7 @@ source https://nuget.org/api/v2
 #     nuget FSharp.Core ~> 4.1.0 redirects: force
 
 nuget AutoFixture
-nuget FSharp.Core ~> 4.0.0.1 redirects: force
+nuget FSharp.Core ~> 4.3.4 redirects: force
 nuget NuSoft.FSharp.IEC.DataTypes
 nuget TwinCAT.Ads
 
