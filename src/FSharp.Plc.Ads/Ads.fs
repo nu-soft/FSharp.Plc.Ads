@@ -161,7 +161,7 @@ module Builder =
           try 
             let handle = this.Client.CreateVariableHandle symName
             let info = 
-              fun () -> this.SymbolLoader.FindSymbol(symName) 
+              fun () -> this.SymbolLoader.FindSymbol(symName.ToUpperInvariant()) 
               |> lock this.SymbolLoader
             
             this.Symbols.Add (symName,(symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo> |> Seq.length))
