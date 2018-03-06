@@ -11,7 +11,7 @@ source https://nuget.org/api/v2
 nuget AutoFixture
 nuget FSharp.Core ~> 4.0.0.1 redirects: force
 nuget NuSoft.FSharp.IEC.DataTypes
-nuget TwinCAT.Ads.NET
+nuget TwinCAT.Ads
 
 group Build
   source https://nuget.org/api/v2

@@ -91,7 +91,7 @@
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3' Or $(TargetFrameworkVersion) == 'v4.7' Or $(TargetFrameworkVersion) == 'v4.7.1')">
       <ItemGroup>
         <Reference Include="TwinCAT.Ads">
-          <HintPath>..\..\packages\TwinCAT.Ads.NET\lib\net40\TwinCAT.Ads.dll</HintPath>
+          <HintPath>..\..\packages\TwinCat.Ads\lib\TwinCAT.Ads.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

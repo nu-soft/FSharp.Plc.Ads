@@ -66,7 +66,8 @@ module Builder =
     
 
   module Helpers =
-    open TwinCAT.PlcOpen
+    //open TwinCAT.PlcOpen
+    open TwinCAT.Ads.Internal
     
 
     let parseErrorCodes op (code: AdsErrorCode) = sprintf "%sAMS ERROR: %A" op code

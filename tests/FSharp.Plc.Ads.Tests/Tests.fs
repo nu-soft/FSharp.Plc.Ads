@@ -2,10 +2,10 @@ module Tests
 
 open FSharp.Plc.Ads.Experimental
 open NUnit.Framework
-open Ploeh.AutoFixture
 open TwinCAT.Ads
 open System
 open System.Linq
+open AutoFixture
 
 let writeOnce<'T when 'T : struct> (client:TcAdsClient) symName (value: 'T) =
   let handle = client.CreateVariableHandle symName
