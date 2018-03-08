@@ -54,14 +54,36 @@
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '9', 9)" onmouseover="showTip(event, '9', 9)">
-            ReadAny(arg1, arg2)
+            Observe(arg1, arg2, arg3, arg4)
           </code>
           <div class="tip" id="9">
+            <strong>Signature:</strong> (obj * string * int * int) -&gt; Result&lt;IObservable&lt;&#39;T&gt;&gt;<br />
+                          <strong>Type parameters:</strong> 'T          </div>
+        </td>
+        <td class="xmldoc">
+            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L396-396" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>A method used to register observer on variable</p>
+<p><code>'T</code> is observed value type</p>
+<p><strong>returns</strong> <a href="fsharp-plc-ads-experimental-builder-result.html" title="Result">Result</a></p>
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '10', 10)" onmouseover="showTip(event, '10', 10)">
+            ReadAny(arg1, arg2)
+          </code>
+          <div class="tip" id="10">
             <strong>Signature:</strong> (obj * string) -&gt; Result&lt;&#39;T&gt;<br />
                           <strong>Type parameters:</strong> 'T          </div>
         </td>
         <td class="xmldoc">
-            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L179-179" class="github-link">
+            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L280-280" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -75,15 +97,15 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '10', 10)" onmouseover="showTip(event, '10', 10)">
+          <code onmouseout="hideTip(event, '11', 11)" onmouseover="showTip(event, '11', 11)">
             ReadMany(arg1, arg2)
           </code>
-          <div class="tip" id="10">
+          <div class="tip" id="11">
             <strong>Signature:</strong> (obj * obj) -&gt; Result&lt;&#39;T&gt;<br />
                           <strong>Type parameters:</strong> 'T          </div>
         </td>
         <td class="xmldoc">
-            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L184-184" class="github-link">
+            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L285-285" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -98,15 +120,15 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '11', 11)" onmouseover="showTip(event, '11', 11)">
+          <code onmouseout="hideTip(event, '12', 12)" onmouseover="showTip(event, '12', 12)">
             WriteAny(arg1, arg2, arg3)
           </code>
-          <div class="tip" id="11">
+          <div class="tip" id="12">
             <strong>Signature:</strong> (obj * string * &#39;T) -&gt; Result&lt;unit&gt;<br />
                           <strong>Type parameters:</strong> 'T          </div>
         </td>
         <td class="xmldoc">
-            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L241-241" class="github-link">
+            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L342-342" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -120,15 +142,15 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '12', 12)" onmouseover="showTip(event, '12', 12)">
+          <code onmouseout="hideTip(event, '13', 13)" onmouseover="showTip(event, '13', 13)">
             WriteMany(arg1, arg2)
           </code>
-          <div class="tip" id="12">
+          <div class="tip" id="13">
             <strong>Signature:</strong> (obj * seq&lt;string * obj&gt;) -&gt; Result&lt;unit&gt;<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L247-247" class="github-link">
+            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L348-348" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -142,15 +164,15 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '13', 13)" onmouseover="showTip(event, '13', 13)">
+          <code onmouseout="hideTip(event, '14', 14)" onmouseover="showTip(event, '14', 14)">
             Yield(arg1)
           </code>
-          <div class="tip" id="13">
+          <div class="tip" id="14">
             <strong>Signature:</strong> &#39;a -&gt; unit<br />
                           <strong>Type parameters:</strong> 'a          </div>
         </td>
         <td class="xmldoc">
-            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L155-155" class="github-link">
+            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L256-256" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
