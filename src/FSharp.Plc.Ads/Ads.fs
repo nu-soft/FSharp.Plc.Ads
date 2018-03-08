@@ -7,6 +7,79 @@ module Builder =
   open Microsoft.FSharp.Reflection
   open System.Collections.Concurrent
   open System
+  open TwinCAT.Ads.Internal
+  open TwinCAT.Ads.Internal
+
+  type Unsubscriber<'T> =
+    private {
+      Observers: List<IObserver<'T>>
+      Observer: IObserver<'T>
+    }
+    interface IDisposable with
+      member this.Dispose() =
+        match this.Observer with
+        | null -> ()
+        | observer ->
+          if this.Observers.Contains(observer) then
+            this.Observers.Remove(observer) |> ignore
+    
+  type INotify =
+    abstract member Notify: obj -> unit
+    abstract member Error: exn -> unit
+
+  type AdsObservable<'T> = 
+    private {
+      Observers: List<IObserver<'T>>
+    }
+    member this.Notify (value: 'T) = 
+      this.Observers
+      |> Seq.iter (fun ob -> 
+        ob.OnNext value
+      )
+    interface INotify with
+      member this.Error err =
+        this.Observers
+        |> Seq.iter (fun ob -> 
+          ob.OnError err
+        )
+
+      member this.Notify value =
+        match typeof<'T> with
+        | t when t = typeof<DateTime> ->
+          value :?> uint32 |> DateBase.ValueToDate :> obj :?> 'T
+        | t when t = typeof<TimeSpan> ->
+          value :?> uint32 |> TimeBase.ValueToTime :> obj :?> 'T
+        | t when t = typeof<TimeSpan array> ->
+          value
+          :?> uint32 array 
+          |> Array.map TimeBase.ValueToTime 
+          :> obj 
+          :?> 'T
+        | t when t = typeof<DateTime array> ->
+          value
+          :?> uint32 array 
+          |> Array.map DateBase.ValueToDate
+          :> obj 
+          :?> 'T
+        | _ -> value :?> 'T
+        |> this.Notify
+
+    interface IObservable<'T> with
+      member this.Subscribe(observer) =
+        if this.Observers.Contains(observer) |> not then
+          this.Observers.Add(observer)
+        {
+          Observer = observer;
+          Observers = this.Observers
+        }
+        :> IDisposable
+  module AdsObservable =
+    let create<'T> = 
+      {
+        Observers = List<IObserver<'T>>()
+      }
+
+  
 
   type Result<'T> = Choice<'T,string,AdsErrorCode * string>
   
@@ -106,6 +179,34 @@ module Builder =
 
         | ex -> ex.Message |> sprintf "attempt to read %s: %s" symName |> Rail.nok
 
+    let observe<'T> (client: TcAdsClient) observer (cycleTime,maxDelay) (symName:string,_,_,_,size,arrDim) =
+      try
+        let _ =
+          match typeof<'T> with
+            | str when str = typeof<TimeSpan> ->
+              client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<uint32>)
+            | str when str = typeof<DateTime> ->
+              client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<uint32>)
+            | str when str = typeof<TimeSpan array> ->
+              client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<uint32 array>,[|arrDim|])
+            | str when str = typeof<DateTime array> ->
+              client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<uint32 array>,[|arrDim|])
+            | str when str = typeof<string> -> 
+              client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<'T>, [|size|])
+            | str when str = typeof<string array> -> 
+              client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<'T>, [| size / arrDim - 1; arrDim |])
+            | arr when arr.IsArray && arr.GetElementType().IsValueType ->
+              client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<'T>, [| arrDim |])
+            | _ -> 
+              client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<'T>)
+        observer
+        :> IObservable<'T>
+        |> Rail.ok
+      with
+        | :? AdsErrorException as adsEx ->
+          sprintf "attempt to read %s" symName |> Rail.ads adsEx.ErrorCode 
+        | ex -> ex.Message |> sprintf "attempt to read %s: %s" symName |> Rail.nok
+
     let writeAny (client: TcAdsClient) (value: 'T) (symName, handle,_,_,size,_) =
       let type' = typeof<'T>
       try
@@ -127,7 +228,7 @@ module Builder =
 
     let readWrite (client: TcAdsClient) (cmd: int) len adsStream respStream =
       try
-        client.ReadWrite(cmd,len,respStream,adsStream)
+        client.ReadWrite(cmd,len,respStream,adsStream) |> ignore
         Rail.ok respStream
       with
         | :? AdsErrorException as adsEx ->
@@ -152,7 +253,7 @@ module Builder =
     SymbolLoader: TcAdsSymbolInfoLoader
   }
   with
-    member __.Yield (x) = 
+    member __.Yield (_) = 
       ()
 
     member this.GetSymbolInfo symName =
@@ -291,9 +392,28 @@ module Builder =
         |> Rail.bind (ignore >> Rail.ok)
       )
 
+    [<CustomOperation("observe")>] 
+    member this.Observe<'T> (_, symName:string,cycleTime,maxDelay) : Result<IObservable<'T>> =
+      let observer = AdsObservable.create<'T>
+      
+      this.GetSymbolInfo symName
+      |> Rail.bind (Helpers.observe this.Client observer (cycleTime,maxDelay)) 
+
   let createClient (amsNetId: string) port =
     let client = new TcAdsClient()
     client.Connect(amsNetId,port)
+    client.Synchronize <- false
+    client.AdsNotificationEx
+    |> Observable.subscribe (fun e -> 
+      let uData = e.UserData :?> INotify
+      try
+        e.Value
+        |> uData.Notify 
+        ()
+      with
+      | e -> uData.Error e
+    )
+    |> ignore
     {
       Client = client
       Symbols = ConcurrentDictionary<string,string*int*int64*int64*int*int>()

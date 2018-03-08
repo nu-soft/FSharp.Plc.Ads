@@ -3,6 +3,7 @@
 [<AutoOpen>]
 module Builder = 
   open TwinCAT.Ads
+  open System
   open System.Collections.Generic
   
   /// type alias for `Choice<'T, string, AdsError * string>`
@@ -100,6 +101,14 @@ module Builder =
     /// **returns** [Result]
     [<CustomOperation("writeMany")>] 
     member WriteMany: obj * (string * obj) seq -> Result<unit>
+    
+    /// A method used to register observer on variable
+    ///
+    /// `'T` is observed value type
+    ///
+    /// **returns** [Result]
+    [<CustomOperation("observe")>] 
+    member Observe: obj * string * int * int -> Result<IObservable<'T>>
 
   /// Creates instance of AdsWrapper
   ///
