@@ -110,6 +110,15 @@ module Builder =
     [<CustomOperation("observe")>] 
     member Observe: obj * string * int * int -> Result<IObservable<'T>>
 
+    [<CustomOperation("observeStatus")>] 
+    member ObserveStatus: obj -> Result<IEvent<AdsStateChangedEventHandler, AdsStateChangedEventArgs>>
+    
+    [<CustomOperation("readState")>] 
+    member ReadState: obj -> Result<StateInfo>
+    
+    [<CustomOperation("removeHandles")>] 
+    member RemoveHandles: obj -> unit
+
   /// Creates instance of AdsWrapper
   ///
   /// **amsNetId**: AmsNetId of PLC
@@ -117,4 +126,4 @@ module Builder =
   /// **port**: target port of PLC
   ///
   /// **returns** [AdsWrapper]
-  val createClient: string -> int -> AdsWrapper
+  val createClient: string -> int -> bool -> AdsWrapper

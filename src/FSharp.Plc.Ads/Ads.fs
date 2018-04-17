@@ -8,7 +8,7 @@ module Builder =
   open System.Collections.Concurrent
   open System
   open TwinCAT.Ads.Internal
-  open TwinCAT.Ads.Internal
+  open System.Diagnostics
 
   type Unsubscriber<'T> =
     private {
@@ -111,9 +111,9 @@ module Builder =
       | Choice3Of3 (_,err) -> err
 
   module Rail =
-    let ok (e:'T) = Choice1Of3 e
-    let nok err = Choice2Of3 err
-    let ads code text = Choice3Of3 (code,text)
+    let ok (e:'T) : Result<'T> = Choice1Of3 e
+    let nok err : Result<'T> = Choice2Of3 err
+    let ads code text : Result<'T> = Choice3Of3 (code,text)
 
     let bind<'I, 'T> (f:'I -> Result<'T>) (e: Result<'I>) = 
       match e with
@@ -141,11 +141,12 @@ module Builder =
   module Helpers =
     //open TwinCAT.PlcOpen
     open TwinCAT.Ads.Internal
+    open System.Runtime.InteropServices
     
-
+    let inline retype<'T,'U> (x:'T) : 'U = (# "" x : 'U #)
     let parseErrorCodes op (code: AdsErrorCode) = sprintf "%sAMS ERROR: %A" op code
-
-    let readAny<'T> (client: TcAdsClient) (symName,handle,_,_,size,arrDim) =
+    let readAny<'T> (client: TcAdsClient) (symName,handle,ig,io,size,sym) =
+      let arrDim = sym |> Seq.length
       try
         match typeof<'T> with
           | str when str = typeof<TimeSpan> ->
@@ -170,6 +171,39 @@ module Builder =
             client.ReadAny(handle,typeof<'T>, [| size / arrDim - 1; arrDim |]) :?> 'T
           | arr when arr.IsArray && arr.GetElementType().IsValueType ->
             client.ReadAny(handle,typeof<'T>, [|arrDim|]) :?> 'T
+          | arr when arr.IsArray && FSharpType.IsRecord <| arr.GetElementType() ->
+            use adsStream = new AdsStream(size);
+            client.Read(handle,adsStream)
+            adsStream.Position <- 0L
+            use reader = new AdsBinaryReader(adsStream);
+            //let res = 
+            sym
+            |> Seq.map (fun (s: TcAdsSymbolInfo) ->
+              //let fields = 
+              Seq.zip 
+                (arr.GetElementType() |> FSharpType.GetRecordFields)
+                (s.SubSymbols |> Seq.cast<TcAdsSymbolInfo>)
+              |> Seq.map (fun (pt,si) ->
+                match si.Datatype with
+                | AdsDatatypeId.ADST_INT8 -> reader.ReadSByte()    :> obj
+                | AdsDatatypeId.ADST_INT16 -> reader.ReadInt16()   :> obj
+                | AdsDatatypeId.ADST_INT32 -> reader.ReadInt32()   :> obj
+                | AdsDatatypeId.ADST_INT64 -> reader.ReadInt64()   :> obj
+                | AdsDatatypeId.ADST_UINT8 -> reader.ReadByte()    :> obj
+                | AdsDatatypeId.ADST_UINT16 -> reader.ReadUInt16() :> obj
+                | AdsDatatypeId.ADST_UINT32 -> reader.ReadUInt32() :> obj
+                | AdsDatatypeId.ADST_UINT64 -> reader.ReadUInt64() :> obj
+                | AdsDatatypeId.ADST_STRING -> String.Join("",reader.ReadBytes(si.Size) |> Seq.takeWhile ((<>) 0uy) |> Seq.map (char >> string)) :> obj
+              )
+              |> Array.ofSeq
+              |> (fun a -> 
+                arr.GetElementType(),a,true
+              )
+              |> FSharpValue.MakeRecord
+              |> fun o -> Convert.ChangeType(o,arr.GetElementType())
+            )
+            |> Array.ofSeq
+            |> retype
           | _ -> 
             client.ReadAny(handle, typeof<'T>) :?> 'T
         |> Rail.ok
@@ -179,7 +213,8 @@ module Builder =
 
         | ex -> ex.Message |> sprintf "attempt to read %s: %s" symName |> Rail.nok
 
-    let observe<'T> (client: TcAdsClient) observer (cycleTime,maxDelay) (symName:string,_,_,_,size,arrDim) =
+    let observe<'T> (client: TcAdsClient) observer (cycleTime,maxDelay) (symName:string,_,_,_,size,sym) =
+      let arrDim = sym |> Seq.length
       try
         let _ =
           match typeof<'T> with
@@ -236,7 +271,7 @@ module Builder =
 
         | ex -> ex.Message |> Rail.nok
 
-    let writeHeader (writer:AdsBinaryWriter) (vars: (string*int*int64*int64*int*int) seq) =
+    let writeHeader (writer:AdsBinaryWriter) (vars: (string*int*int64*int64*int*TcAdsSymbolInfo seq) seq) =
       vars
       |> Seq.iter (fun (_,handle,_,_,size,_) ->
         AdsReservedIndexGroups.SymbolValueByHandle |> int |> writer.Write
@@ -249,7 +284,7 @@ module Builder =
 
   type AdsWrapper = internal {
     Client: TcAdsClient
-    Symbols: IDictionary<string,string*int*int64*int64*int*int>
+    Symbols: IDictionary<string,string*int*int64*int64*int*TcAdsSymbolInfo seq>
     SymbolLoader: TcAdsSymbolInfoLoader
   }
   with
@@ -257,24 +292,25 @@ module Builder =
       ()
 
     member this.GetSymbolInfo symName =
-      match this.Symbols.ContainsKey symName with
-        | false ->
-          try 
-            let handle = this.Client.CreateVariableHandle symName
-            let info = 
-              fun () -> this.SymbolLoader.FindSymbol(symName.ToUpperInvariant()) 
-              |> lock this.SymbolLoader
-            
-            this.Symbols.Add (symName,(symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo> |> Seq.length))
-            Rail.ok (symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo> |> Seq.length)
-          with 
-            | :? AdsErrorException as adsEx ->
-              sprintf "creating handle for %s" symName |> Rail.ads adsEx.ErrorCode 
+      (fun () ->
+        match this.Symbols.ContainsKey symName with
+          | false ->
+            try 
+              let handle = this.Client.CreateVariableHandle symName
+              let info = this.SymbolLoader.FindSymbol(symName) 
+                
+              this.Symbols.Add (symName,(symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo>))
+              Rail.ok (symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo>)
+            with 
+              | :? AdsErrorException as adsEx ->
+                sprintf "creating handle for %s" symName |> Rail.ads adsEx.ErrorCode 
 
-            | ex -> ex.Message |> Rail.nok
+              | ex -> ex.Message |> Rail.nok
             
-        | true -> 
-          Rail.ok this.Symbols.[symName]
+          | true -> 
+            Rail.ok this.Symbols.[symName]
+      )
+      |> lock this.Symbols
 
     [<CustomOperation("readAny")>] 
     member this.ReadAny<'T> (_, symName) : Result<'T>  =
@@ -332,6 +368,8 @@ module Builder =
             | t when t = typeof<REAL >->   reader.ReadSingle()  :> obj |> Rail.ok
             | t when t = typeof<LREAL>->   reader.ReadDouble()  :> obj |> Rail.ok
             | t when t = typeof<string> -> reader.ReadString()  :> obj |> Rail.ok
+            | t when t = typeof<TimeSpan> -> reader.ReadPlcTIME()  :> obj |> Rail.ok
+            
             | t -> sprintf "Unexpected type: %A" t |> Rail.nok 
         )
       )
@@ -378,8 +416,10 @@ module Builder =
         )
       )
       |> Rail.bind (fun _ ->
-        use rdStream = new AdsStream(values |> Seq.length |> (*) 4)
+        let rdStream = new AdsStream(values |> Seq.length |> (*) 4)
         Helpers.readWrite this.Client 0xF081 (values |> Seq.length) adsStream rdStream
+        //this.Client.ReadWrite(0xF081,(values |> Seq.length),adsStream,rdStream)
+        //Rail.ok rdStream
       )
       |> Rail.bind (fun rdStream ->
         use reader = new AdsBinaryReader(rdStream)
@@ -391,7 +431,7 @@ module Builder =
         )
         |> Rail.bind (ignore >> Rail.ok)
       )
-
+      
     [<CustomOperation("observe")>] 
     member this.Observe<'T> (_, symName:string,cycleTime,maxDelay) : Result<IObservable<'T>> =
       let observer = AdsObservable.create<'T>
@@ -399,10 +439,38 @@ module Builder =
       this.GetSymbolInfo symName
       |> Rail.bind (Helpers.observe this.Client observer (cycleTime,maxDelay)) 
 
-  let createClient (amsNetId: string) port =
+    [<CustomOperation("observeStatus")>] 
+    member this.ObserveStatus (_:obj)  =
+      this.Client.IsConnected
+      |> function
+      | true ->
+        try
+          this.Client.AdsStateChanged 
+          |> Rail.ok
+        with 
+        | ex -> Rail.nok ex.Message
+      | false -> Rail.nok "Client not connected"
+      
+    [<CustomOperation("readState")>] 
+    member this.ReadState (_:obj)  =
+      try
+        this.Client.ReadState() |> Rail.ok
+      with 
+      | ex -> Rail.nok ex.Message
+
+    [<CustomOperation("removeHandles")>] 
+    member this.RemoveHandles (_:obj)  =
+      (fun () ->
+        this.Symbols.Values
+        |> Seq.iter (fun (_,handle,_,_,_,_) -> this.Client.DeleteVariableHandle(handle))
+        this.Symbols.Clear()
+      )
+      |> lock this.Symbols
+
+  let createClient (amsNetId: string) port sync =
     let client = new TcAdsClient()
     client.Connect(amsNetId,port)
-    client.Synchronize <- false
+    client.Synchronize <- sync
     client.AdsNotificationEx
     |> Observable.subscribe (fun e -> 
       let uData = e.UserData :?> INotify
@@ -416,6 +484,6 @@ module Builder =
     |> ignore
     {
       Client = client
-      Symbols = ConcurrentDictionary<string,string*int*int64*int64*int*int>()
+      Symbols = ConcurrentDictionary<string,string*int*int64*int64*int*TcAdsSymbolInfo seq>()
       SymbolLoader = client.CreateSymbolInfoLoader()
     }
