@@ -63,6 +63,19 @@ module Builder =
     /// **throws** `System.InvalidOperationException` when value is not ADS NOK
     val adsError: Result<'T> -> string
 
+  module Attributes =
+    [<Sealed>]
+    type PartAttribute =
+      inherit Attribute
+      new: string -> PartAttribute
+      member SymName: string
+
+    [<Sealed>]
+    type NonLinearAttribute =
+      inherit Attribute
+      new: string -> NonLinearAttribute
+      member Joint: string
+
   [<Sealed>]
   /// Wraps in [TwinCAT.Ads.TcAdsClient](https://infosys.beckhoff.com/english.php?content=../content/1033/tc3_adsnetref/4017828107.html&id= "Beckhoff InfoSys") in F# computation expression
   type AdsWrapper = 
@@ -124,6 +137,8 @@ module Builder =
   /// **amsNetId**: AmsNetId of PLC
   ///
   /// **port**: target port of PLC
+  ///
+  /// **sync**: synchronize thread
   ///
   /// **returns** [AdsWrapper]
   val createClient: string -> int -> bool -> AdsWrapper

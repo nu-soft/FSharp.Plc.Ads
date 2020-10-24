@@ -147,9 +147,9 @@ Target "Build" (fun _ ->
 // Run the unit tests using test runner
 
 Target "PrepareTC2Tests" (fun _ ->
-    Shell.AsyncExec (plcCtrl, "/show hide /cmd tests/tc2.cmd")
-    |> Async.StartAsTask
-    |> ignore
+    //Shell.AsyncExec (plcCtrl, "/show hide /cmd tests/tc2.cmd")
+    //|> Async.StartAsTask
+    //|> ignore
     System.Threading.Thread.Sleep 5000
 )
 

@@ -151,8 +151,8 @@ let ``primitive types read`` () =
   
 
   let setupClient = new TcAdsClient()
-  setupClient.Connect("192.168.68.132.1.1", 801)
-  let plc = createClient "192.168.68.132.1.1" 801
+  setupClient.Connect("192.168.119.134.1.1", 801)
+  let plc = createClient "192.168.119.134.1.1" 801 false
   
   let inline write symName  = writeOnce setupClient symName 
   
@@ -191,8 +191,8 @@ let ``primitive types read`` () =
 let ``Reading and writing of string variables - read`` () = 
 
   let setupClient = new TcAdsClient()
-  setupClient.Connect("192.168.68.132.1.1", 801)
-  let plc = createClient "192.168.68.132.1.1" 801
+  setupClient.Connect("192.168.119.134.1.1", 801)
+  let plc = createClient "192.168.119.134.1.1" 801 false
   
   let inline writeStr len symName  = writeStringOnce setupClient symName len
   
@@ -209,8 +209,8 @@ let ``Reading and writing of string variables - read`` () =
 let ``Reading and writing of date and time variables - read`` () = 
 
   let setupClient = new TcAdsClient()
-  setupClient.Connect("192.168.68.132.1.1", 801)
-  let plc = createClient "192.168.68.132.1.1" 801
+  setupClient.Connect("192.168.119.134.1.1", 801)
+  let plc = createClient "192.168.119.134.1.1" 801 false
   
   
   let timeExp = fixture.Create<TimeSpan>()
@@ -234,8 +234,8 @@ let ``Reading and writing of date and time variables - read`` () =
 let ``1-dim arrays read`` () = 
 
   let setupClient = new TcAdsClient()
-  setupClient.Connect("192.168.68.132.1.1", 801)
-  let plc = createClient "192.168.68.132.1.1" 801
+  setupClient.Connect("192.168.119.134.1.1", 801)
+  let plc = createClient "192.168.119.134.1.1" 801 false
   
   let inline write symName  = writeArrOnce setupClient symName 
 

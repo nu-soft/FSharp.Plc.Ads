@@ -9,6 +9,7 @@ module Builder =
   open System
   open TwinCAT.Ads.Internal
   open System.Diagnostics
+  open System.Reflection
 
   type Unsubscriber<'T> =
     private {
@@ -82,6 +83,22 @@ module Builder =
   
 
   type Result<'T> = Choice<'T,string,AdsErrorCode * string>
+
+  type Mode = 
+    | Tc2
+    | Tc3
+  
+  module Attributes =
+    [<Sealed>]
+    type PartAttribute(symName: string) =
+      inherit Attribute()
+      member this.SymName = symName
+
+    [<Sealed>]
+    type NonLinearAttribute(joint: string) =
+      inherit Attribute()
+      member this.Joint = joint
+
   
   module Result =
     let isOk: Result<'T> -> bool = function | Choice1Of3 _ -> true | _ -> false
@@ -142,8 +159,11 @@ module Builder =
     //open TwinCAT.PlcOpen
     open TwinCAT.Ads.Internal
     open System.Runtime.InteropServices
+    open System.Reflection
     
-    let inline retype<'T,'U> (x:'T) : 'U = (# "" x : 'U #)
+    let inline retype<'T,'U> (x:'T) : 'U =
+      (# "" x : 'U #)
+
     let parseErrorCodes op (code: AdsErrorCode) = sprintf "%sAMS ERROR: %A" op code
     let readAny<'T> (client: TcAdsClient) (symName,handle,ig,io,size,sym) =
       let arrDim = sym |> Seq.length
@@ -194,6 +214,7 @@ module Builder =
                 | AdsDatatypeId.ADST_UINT32 -> reader.ReadUInt32() :> obj
                 | AdsDatatypeId.ADST_UINT64 -> reader.ReadUInt64() :> obj
                 | AdsDatatypeId.ADST_STRING -> String.Join("",reader.ReadBytes(si.Size) |> Seq.takeWhile ((<>) 0uy) |> Seq.map (char >> string)) :> obj
+                | e -> failwithf "UNAHANDLED TYPE %A" e
               )
               |> Array.ofSeq
               |> (fun a -> 
@@ -213,10 +234,10 @@ module Builder =
 
         | ex -> ex.Message |> sprintf "attempt to read %s: %s" symName |> Rail.nok
 
-    let observe<'T> (client: TcAdsClient) observer (cycleTime,maxDelay) (symName:string,_,_,_,size,sym) =
+    let observe<'T> (dict:IDictionary<string,int>) (client: TcAdsClient) observer (cycleTime,maxDelay) (symName:string,_,_,_,size,sym) =
       let arrDim = sym |> Seq.length
       try
-        let _ =
+        let handle = 
           match typeof<'T> with
             | str when str = typeof<TimeSpan> ->
               client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<uint32>)
@@ -234,6 +255,8 @@ module Builder =
               client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<'T>, [| arrDim |])
             | _ -> 
               client.AddDeviceNotificationEx(symName.ToUpperInvariant(),AdsTransMode.OnChange,cycleTime,maxDelay, observer,typeof<'T>)
+        dict.Add(symName,handle)
+        
         observer
         :> IObservable<'T>
         |> Rail.ok
@@ -273,19 +296,20 @@ module Builder =
 
     let writeHeader (writer:AdsBinaryWriter) (vars: (string*int*int64*int64*int*TcAdsSymbolInfo seq) seq) =
       vars
-      |> Seq.iter (fun (_,handle,_,_,size,_) ->
+      |> Seq.iter (fun (sym,handle,_,_,size,_) ->
         AdsReservedIndexGroups.SymbolValueByHandle |> int |> writer.Write
         handle |> writer.Write
         size |> writer.Write
       )
       Rail.ok (writer,vars)
-
         
 
   type AdsWrapper = internal {
     Client: TcAdsClient
     Symbols: IDictionary<string,string*int*int64*int64*int*TcAdsSymbolInfo seq>
     SymbolLoader: TcAdsSymbolInfoLoader
+    Mode: Mode
+    NotifHandles: IDictionary<string,int>
   }
   with
     member __.Yield (_) = 
@@ -297,7 +321,7 @@ module Builder =
           | false ->
             try 
               let handle = this.Client.CreateVariableHandle symName
-              let info = this.SymbolLoader.FindSymbol(symName) 
+              let info = this.SymbolLoader.FindSymbol(match this.Mode with | Tc3 -> symName | Tc2 -> symName.ToUpperInvariant()) 
                 
               this.Symbols.Add (symName,(symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo>))
               Rail.ok (symName,handle,info.IndexGroup,info.IndexOffset,info.Size,info.SubSymbols |> Seq.cast<TcAdsSymbolInfo>)
@@ -305,7 +329,7 @@ module Builder =
               | :? AdsErrorException as adsEx ->
                 sprintf "creating handle for %s" symName |> Rail.ads adsEx.ErrorCode 
 
-              | ex -> ex.Message |> Rail.nok
+              | ex -> ex.ToString() |> Rail.nok
             
           | true -> 
             Rail.ok this.Symbols.[symName]
@@ -314,8 +338,101 @@ module Builder =
 
     [<CustomOperation("readAny")>] 
     member this.ReadAny<'T> (_, symName) : Result<'T>  =
-      this.GetSymbolInfo symName
-      |> Rail.bind (Helpers.readAny this.Client) 
+      let t = typeof<'T>
+      if FSharpType.IsRecord t && t.GetCustomAttributes(typeof<Attributes.NonLinearAttribute>,true) |> Array.length > 0 then
+        let linear = CustomAttributeExtensions.GetCustomAttribute<Attributes.NonLinearAttribute> t
+        use adsStream = new AdsStream()
+        use writer = new AdsBinaryWriter(adsStream)
+        let symNames = 
+          FSharpType.GetRecordFields t
+          |> Array.map CustomAttributeExtensions.GetCustomAttribute<Attributes.PartAttribute>
+          |> Array.map (fun attr -> sprintf "%s%s%s" symName linear.Joint attr.SymName)
+        let fields = 
+          symNames
+          |> Rail.map this.GetSymbolInfo
+        fields 
+        |> Rail.bind (fun vars ->
+        
+          let streamLength = 
+            vars
+            |> Seq.fold (fun acc (_,handle,_,_,size,_) ->    
+                AdsReservedIndexGroups.SymbolValueByHandle |> int |> writer.Write
+                handle |> writer.Write
+                size |> writer.Write
+                acc + size
+            ) (vars |> Seq.length |> (*) 4)
+          new AdsStream(streamLength)
+          |> Rail.ok
+        )
+        |> Rail.bind (Helpers.readWrite this.Client 0xF080 (symNames |> Seq.length) adsStream)
+        |> Rail.bind (fun rdStream ->
+          let reader = new AdsBinaryReader(rdStream)
+          symNames
+          |> Rail.map (fun symName ->
+            match  reader.ReadInt32 () |> LanguagePrimitives.EnumOfValue with
+            | AdsErrorCode.NoError -> Rail.ok ()
+            | code ->sprintf "error while reading %s in read many" symName |> Rail.ads code
+          )
+          |> Rail.bind (fun _ -> Rail.ok reader)
+        )
+        |> Rail.bind (fun reader ->
+          
+          
+          //FSharpType.GetRecordFields typeof<'T>
+          fields
+          |> Rail.bind (fun ff ->
+            FSharpType.GetRecordFields t
+            |> Seq.zip ff
+            |> Rail.map (fun ((_,_,_,_,size,_),pi) ->
+              let a =
+                match pi.PropertyType with
+                | t when t = typeof<DateTime>->    reader.ReadPlcDATE() :> obj |> Rail.ok
+                | t when t = typeof<TimeSpan>->    reader.ReadPlcTIME() :> obj |> Rail.ok
+                | t when t = typeof<BOOL>->    reader.ReadBoolean() :> obj |> Rail.ok
+                | t when t = typeof<BYTE>->    reader.ReadByte()    :> obj |> Rail.ok
+                | t when t = typeof<INT >->    reader.ReadInt16()   :> obj |> Rail.ok
+                | t when t = typeof<LINT>->    reader.ReadInt64()   :> obj |> Rail.ok
+                | t when t = typeof<DINT>->    reader.ReadInt32()   :> obj |> Rail.ok
+                | t when t = typeof<SINT>->    reader.ReadSByte()   :> obj |> Rail.ok
+                | t when t = typeof<WORD>->    reader.ReadUInt16()  :> obj |> Rail.ok
+                | t when t = typeof<DWORD>->   reader.ReadUInt32()  :> obj |> Rail.ok
+                | t when t = typeof<LWORD>->   reader.ReadUInt64()  :> obj |> Rail.ok
+                | t when t = typeof<REAL >->   reader.ReadSingle()  :> obj |> Rail.ok
+                | t when t = typeof<LREAL>->   reader.ReadDouble()  :> obj |> Rail.ok
+                | t when t = typeof<INT array> ->   
+                  size / (sizeof<INT>)
+                  |> Array.unfold (
+                    function
+                    | 0 -> None
+                    | n -> Some (reader.ReadInt16(),n-1)
+                  )
+                  :> obj 
+                  |> Rail.ok
+                | t when t = typeof<string> -> 
+                  try 
+                    seq {
+                      for __ = 1 to min size (reader.BaseStream.Length - reader.BaseStream.Position - 1L |> int ) do
+                        yield reader.ReadByte()
+                    }
+                    |> Seq.toArray
+                    |> Seq.takeWhile ((<>) 0uy)
+                    |> Seq.map (char >> string)
+                    |> String.concat ""  
+                    :> obj 
+                    |> Rail.ok
+                  with | e -> e.ToString() |> Rail.nok
+                | t when t = typeof<TimeSpan> -> reader.ReadPlcTIME()  :> obj |> Rail.ok
+                | t when t = typeof<DateTime> -> reader.ReadPlcDATE()  :> obj |> Rail.ok
+                | t -> sprintf "Unexpected type: %A" t |> Rail.nok 
+              a
+            )
+          )
+        )
+        |> Rail.bind (Seq.toArray >> Rail.ok)
+        |> Rail.bind (fun ele -> FSharpValue.MakeRecord(typeof<'T>,ele) |> Helpers.retype |> Rail.ok)
+      else
+        this.GetSymbolInfo symName
+        |> Rail.bind (Helpers.readAny this.Client) 
 
     [<CustomOperation("readMany")>] 
     member this.ReadMany<'T> (_, symNames: obj) =
@@ -325,7 +442,6 @@ module Builder =
       let fields = 
         symNames
         |> Rail.map this.GetSymbolInfo
-        
     
       fields 
       |> Rail.bind (fun vars ->
@@ -343,7 +459,7 @@ module Builder =
       )
       |> Rail.bind (Helpers.readWrite this.Client 0xF080 (symNames |> Seq.length) adsStream)
       |> Rail.bind (fun rdStream ->
-        use reader = new AdsBinaryReader(rdStream)
+        let reader = new AdsBinaryReader(rdStream)
         symNames
         |> Rail.map (fun symName ->
           match  reader.ReadInt32 () |> LanguagePrimitives.EnumOfValue with
@@ -353,24 +469,43 @@ module Builder =
         |> Rail.bind (fun _ -> Rail.ok reader)
       )
       |> Rail.bind (fun reader ->
-        FSharpType.GetTupleElements typeof<'T>
-        |> Rail.map (fun type' ->
-          match type' with
-            | t when t = typeof<BOOL>->    reader.ReadBoolean() :> obj |> Rail.ok
-            | t when t = typeof<BYTE>->    reader.ReadByte()    :> obj |> Rail.ok
-            | t when t = typeof<INT >->    reader.ReadInt16()   :> obj |> Rail.ok
-            | t when t = typeof<LINT>->    reader.ReadInt64()   :> obj |> Rail.ok
-            | t when t = typeof<DINT>->    reader.ReadInt32()   :> obj |> Rail.ok
-            | t when t = typeof<SINT>->    reader.ReadSByte()   :> obj |> Rail.ok
-            | t when t = typeof<WORD>->    reader.ReadUInt16()  :> obj |> Rail.ok
-            | t when t = typeof<DWORD>->   reader.ReadUInt32()  :> obj |> Rail.ok
-            | t when t = typeof<LWORD>->   reader.ReadUInt64()  :> obj |> Rail.ok
-            | t when t = typeof<REAL >->   reader.ReadSingle()  :> obj |> Rail.ok
-            | t when t = typeof<LREAL>->   reader.ReadDouble()  :> obj |> Rail.ok
-            | t when t = typeof<string> -> reader.ReadString()  :> obj |> Rail.ok
-            | t when t = typeof<TimeSpan> -> reader.ReadPlcTIME()  :> obj |> Rail.ok
+        fields 
+        |> Rail.bind (fun vars ->
+          FSharpType.GetTupleElements typeof<'T>
+          |> Seq.zip vars
+          |> Rail.map (fun ((_,_,_,_,size,_),type') ->
+            match type' with
+              | t when t = typeof<DateTime>->    reader.ReadPlcDATE() :> obj |> Rail.ok
+              | t when t = typeof<TimeSpan>->    reader.ReadPlcTIME() :> obj |> Rail.ok
+              | t when t = typeof<BOOL>->    reader.ReadBoolean() :> obj |> Rail.ok
+              | t when t = typeof<BYTE>->    reader.ReadByte()    :> obj |> Rail.ok
+              | t when t = typeof<INT >->    reader.ReadInt16()   :> obj |> Rail.ok
+              | t when t = typeof<LINT>->    reader.ReadInt64()   :> obj |> Rail.ok
+              | t when t = typeof<DINT>->    reader.ReadInt32()   :> obj |> Rail.ok
+              | t when t = typeof<SINT>->    reader.ReadSByte()   :> obj |> Rail.ok
+              | t when t = typeof<WORD>->    reader.ReadUInt16()  :> obj |> Rail.ok
+              | t when t = typeof<DWORD>->   reader.ReadUInt32()  :> obj |> Rail.ok
+              | t when t = typeof<LWORD>->   reader.ReadUInt64()  :> obj |> Rail.ok
+              | t when t = typeof<REAL >->   reader.ReadSingle()  :> obj |> Rail.ok
+              | t when t = typeof<LREAL>->   reader.ReadDouble()  :> obj |> Rail.ok
+              | t when t = typeof<string> -> 
+                try 
+                  seq {
+                    for __ = 1 to min size (reader.BaseStream.Length - reader.BaseStream.Position - 1L |> int ) do
+                      yield reader.ReadByte()
+                  }
+                  |> Seq.toArray
+                  |> Seq.takeWhile ((<>) 0uy)
+                  |> Seq.map (char >> string)
+                  |> String.concat ""  
+                  :> obj 
+                  |> Rail.ok
+                with | e -> e.ToString() |> Rail.nok
+                //reader.ReadString()  :> obj |> Rail.ok
+              | t when t = typeof<TimeSpan> -> reader.ReadPlcTIME()  :> obj |> Rail.ok
             
-            | t -> sprintf "Unexpected type: %A" t |> Rail.nok 
+              | t -> sprintf "Unexpected type: %A" t |> Rail.nok 
+          )
         )
       )
       |> Rail.bind (Seq.toArray >> Rail.ok)
@@ -378,8 +513,80 @@ module Builder =
     
     [<CustomOperation("writeAny")>] 
     member this.WriteAny<'T> (_, symName, value: 'T) =
-      this.GetSymbolInfo symName 
-      |> Rail.bind (Helpers.writeAny this.Client value)
+      let t = typeof<'T>
+      if FSharpType.IsRecord t && t.GetCustomAttributes(typeof<Attributes.NonLinearAttribute>,true) |> Array.length > 0 then
+        let linear = CustomAttributeExtensions.GetCustomAttribute<Attributes.NonLinearAttribute> t
+        use adsStream = new AdsStream()
+        use writer = new AdsBinaryWriter(adsStream)
+        let symNames = 
+          FSharpType.GetRecordFields t
+          |> Array.map CustomAttributeExtensions.GetCustomAttribute<Attributes.PartAttribute>
+          |> Array.map (fun attr -> sprintf "%s%s%s" symName linear.Joint attr.SymName)
+        let fields = 
+          symNames
+          |> Rail.map this.GetSymbolInfo
+        let values =
+          FSharpType.GetRecordFields t
+          |> Array.map (fun pi -> pi.GetValue(value))
+        fields
+        |> Rail.bind (Helpers.writeHeader writer)
+        |> Rail.bind (fun (writer,vars) ->
+          vars
+          |> Seq.zip values
+          |> Rail.map (fun (value,(_,_,_,_,size,_)) ->
+            match value with
+              | :? BOOL as v-> writer.Write(v)  |> Rail.ok
+              | :? BYTE as v-> writer.Write(v)  |> Rail.ok
+              | :? INT as v-> writer.Write(v)   |> Rail.ok
+              | :? LINT as v-> writer.Write(v)  |> Rail.ok
+              | :? DINT as v-> writer.Write(v)  |> Rail.ok
+              | :? SINT as v-> writer.Write(v)  |> Rail.ok
+              | :? WORD as v-> writer.Write(v)  |> Rail.ok
+              | :? DWORD as v-> writer.Write(v) |> Rail.ok
+              | :? LWORD as v-> writer.Write(v) |> Rail.ok
+              | :? REAL as v-> writer.Write(v)  |> Rail.ok
+              | :? LREAL as v-> writer.Write(v) |> Rail.ok
+              | :? TimeSpan as v-> writer.WritePlcType(v) |> Rail.ok
+              | :? DateTime as v-> writer.WritePlcType(v) |> Rail.ok
+              | :? (BYTE array) as v ->
+                v |> Seq.iter writer.Write
+                seq { 1 .. (size  - Seq.length v) }
+                |> Seq.iter (fun _ ->
+                  writer.Write(0uy)
+                )
+                Rail.ok ()
+              | :? string as s -> 
+                s |> Seq.iter writer.Write
+                seq { 1 .. (size  - Seq.length s) }
+                |> Seq.iter (fun _ ->
+                  writer.Write(0uy)
+                )
+                Rail.ok ()
+              | _ -> sprintf "Type %s not yet supported" (value.GetType().FullName) |> Rail.nok
+          )
+        )
+        |> Rail.bind (fun _ ->
+          let rdStream = new AdsStream(values |> Seq.length |> (*) 4)
+          Helpers.readWrite this.Client 0xF081 (values |> Seq.length) adsStream rdStream
+          //this.Client.ReadWrite(0xF081,(values |> Seq.length),adsStream,rdStream)
+          //Rail.ok rdStream
+        )
+        |> Rail.bind (fun rdStream ->
+          use reader = new AdsBinaryReader(rdStream)
+          fields
+          |> Rail.bind (
+            Rail.map (fun (symName,_,_,_,_,_) ->
+              match  reader.ReadInt32 () |> LanguagePrimitives.EnumOfValue with
+              | AdsErrorCode.NoError -> Rail.ok ()
+              | code -> sprintf "error while writing %s in write many" symName |> Rail.ads code
+            )
+            >> Rail.bind (ignore >> Rail.ok)
+          )
+        )
+      else
+        //printfn "Write any value"
+        this.GetSymbolInfo symName 
+        |> Rail.bind (Helpers.writeAny this.Client value)
         
       
     [<CustomOperation("writeMany")>] 
@@ -394,6 +601,8 @@ module Builder =
         |> Seq.zip (Seq.map snd values)
         |> Rail.map (fun (value,(_,_,_,_,size,_)) ->
           match value with
+            | :? DateTime as v-> writer.WritePlcType(v)  |> Rail.ok
+            | :? TimeSpan as v-> writer.WritePlcType(v)  |> Rail.ok
             | :? BOOL as v-> writer.Write(v)  |> Rail.ok
             | :? BYTE as v-> writer.Write(v)  |> Rail.ok
             | :? INT as v-> writer.Write(v)   |> Rail.ok
@@ -405,6 +614,19 @@ module Builder =
             | :? LWORD as v-> writer.Write(v) |> Rail.ok
             | :? REAL as v-> writer.Write(v)  |> Rail.ok
             | :? LREAL as v-> writer.Write(v) |> Rail.ok
+            | :? (INT array) as v-> 
+              let s = size / sizeof<INT>
+              v 
+              |> Array.truncate s
+              |> Seq.iter writer.Write
+              seq { 1 .. (s  - Array.length v) }
+              |> Seq.iter (fun _ ->
+                writer.Write(Unchecked.defaultof<INT>)
+              )
+              Rail.ok ()
+              //printfn "%A" sizestFinalize
+              //sprintf "Type %s not yet supported" (value.GetType().FullName) |> Rail.nok
+              //writer.Write(v) |> Rail.ok
             | :? string as s -> 
               s |> Seq.iter writer.Write
               seq { 1 .. (size  - Seq.length s) }
@@ -437,7 +659,7 @@ module Builder =
       let observer = AdsObservable.create<'T>
       
       this.GetSymbolInfo symName
-      |> Rail.bind (Helpers.observe this.Client observer (cycleTime,maxDelay)) 
+      |> Rail.bind (Helpers.observe this.NotifHandles this.Client observer (cycleTime,maxDelay)) 
 
     [<CustomOperation("observeStatus")>] 
     member this.ObserveStatus (_:obj)  =
@@ -461,9 +683,23 @@ module Builder =
     [<CustomOperation("removeHandles")>] 
     member this.RemoveHandles (_:obj)  =
       (fun () ->
-        this.Symbols.Values
-        |> Seq.iter (fun (_,handle,_,_,_,_) -> this.Client.DeleteVariableHandle(handle))
+        let symCpy = this.Symbols.Values
         this.Symbols.Clear()
+        this.NotifHandles
+        |> Seq.iter (fun kvp ->
+          try
+            this.Client.DeleteDeviceNotification kvp.Value
+          with
+            | ex -> Trace.TraceError ex.Message
+        )
+        this.NotifHandles.Clear()
+        symCpy
+        |> Seq.iter (fun (_,handle,_,_,_,_) -> 
+          try
+            this.Client.DeleteVariableHandle(handle)
+          with
+            | ex -> Trace.TraceError ex.Message
+        )
       )
       |> lock this.Symbols
 
@@ -483,7 +719,9 @@ module Builder =
     )
     |> ignore
     {
+      Mode = if port < 850 then Tc2 else Tc3
       Client = client
+      NotifHandles = ConcurrentDictionary<string,int>()
       Symbols = ConcurrentDictionary<string,string*int*int64*int64*int*TcAdsSymbolInfo seq>()
       SymbolLoader = client.CreateSymbolInfoLoader()
     }

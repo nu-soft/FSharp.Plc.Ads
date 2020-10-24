@@ -98,20 +98,21 @@
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '1', 1)" onmouseover="showTip(event, '1', 1)">
-            createClient arg1 arg2
+            createClient arg1 arg2 arg3
           </code>
           <div class="tip" id="1">
-            <strong>Signature:</strong> string -&gt; int -&gt; AdsWrapper<br />
+            <strong>Signature:</strong> string -&gt; int -&gt; bool -&gt; AdsWrapper<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L402-402" class="github-link">
+            <a href="https://github.com/nu-soft/FSharp.Plc.Ads/tree/master/src/FSharp.Plc.Ads/Ads.fs#L475-475" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
           <p>Creates instance of AdsWrapper</p>
 <p><strong>amsNetId</strong>: AmsNetId of PLC</p>
 <p><strong>port</strong>: target port of PLC</p>
+<p><strong>sync</strong>: synchronize thread</p>
 <p><strong>returns</strong> <a href="fsharp-plc-ads-experimental-builder-adswrapper.html" title="AdsWrapper">AdsWrapper</a></p>
 
 
